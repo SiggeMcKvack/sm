@@ -3,6 +3,7 @@
 #include <string.h>
 #include <stdint.h>
 #include <stdbool.h>
+#include <assert.h>
 #include <SDL.h>
 #ifdef _WIN32
 #include "platform/win32/volume_control.h"
@@ -21,6 +22,7 @@
 #include "config.h"
 #include "util.h"
 #include "spc_player.h"
+#include "logging.h"
 
 #ifdef __SWITCH__
 #include "switch_impl.h"
@@ -40,20 +42,10 @@ static void HandleInput(int keyCode, int keyMod, bool pressed);
 static void HandleCommand(uint32 j, bool pressed);
 void OpenGLRenderer_Create(struct RendererFuncs *funcs);
 
-bool g_debug_flag;
-bool g_is_turbo;
-bool g_is_turbo;
-bool g_want_dump_memmap_flags;
-bool g_new_ppu;
-bool g_new_ppu = true;
-bool g_other_image;
+// Game state migrated to g_game_ctx (except g_new_ppu which is used by PPU code)
+bool g_new_ppu = true;  // Keep as global - used by snes/ppu.c
 struct SpcPlayer *g_spc_player;
 static uint32_t button_state;
-
-static uint8_t *g_pixels;
-static uint8_t *g_my_pixels;
-
-int g_got_mismatch_count;
 
 
 enum {
@@ -62,42 +54,55 @@ enum {
   kDefaultFreq = 44100,
   kDefaultChannels = 2,
   kDefaultSamples = 2048,
+  // Frame timing for 60 FPS (17ms, 17ms, 16ms pattern averages to 16.67ms)
+  kFrameDelayMs_60fps_0 = 17,
+  kFrameDelayMs_60fps_1 = 17,
+  kFrameDelayMs_60fps_2 = 16,
+  // Windows default window border sizes (for fallback when GetWindowBordersSize fails)
+  kWindowBorderLeft = 1,
+  kWindowBorderRight = 1,
+  kWindowBorderBottom = 1,
+  kWindowBorderTop = 31,
+  // Gamepad analog stick deadzone threshold (squared distance)
+  kGamepadDeadzone = 10000,
+  kGamepadDeadzoneSq = kGamepadDeadzone * kGamepadDeadzone,
+  // Trigger axis thresholds with hysteresis
+  kTriggerReleaseThreshold = 12000,
+  kTriggerPressThreshold = 16000,
 };
 
 static const char kWindowTitle[] = "SuperMet";
-static uint32 g_win_flags = SDL_WINDOW_RESIZABLE;
-static SDL_Window *g_window;
+
+// Context instances for organized state management
+static AudioContext g_audio_ctx;
+static RenderContext g_render_ctx;
+GameContext g_game_ctx;  // Non-static - used by sm_cpu_infra.c and other files
+
+// Window and render state migrated to g_render_ctx
 
 static uint8 g_paused, g_turbo, g_replay_turbo = true, g_cursor = true;
-static uint8 g_current_window_scale;
 static uint8 g_gamepad_buttons;
 static int g_input1_state;
-static bool g_display_perf;
-static int g_curr_fps;
-static int g_ppu_render_flags = 0;
-static int g_snes_width, g_snes_height;
-static int g_sdl_audio_mixer_volume = SDL_MIX_MAXVOLUME;
 static struct RendererFuncs g_renderer_funcs;
 static uint32 g_gamepad_modifiers;
 static uint16 g_gamepad_last_cmd[kGamepadBtn_Count];
-extern Snes *g_snes;
 
 void NORETURN Die(const char *error) {
   SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, kWindowTitle, error, NULL);
-  fprintf(stderr, "Error: %s\n", error);
+  LogError("%s", error);
   exit(1);
 }
 
 void Warning(const char *error) {
   SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_WARNING, kWindowTitle, error, NULL);
-  fprintf(stderr, "Warning: %s\n", error);
+  LogWarn("%s", error);
 }
 
 
 void ChangeWindowScale(int scale_step) {
-  if ((SDL_GetWindowFlags(g_window) & (SDL_WINDOW_FULLSCREEN_DESKTOP | SDL_WINDOW_FULLSCREEN | SDL_WINDOW_MINIMIZED | SDL_WINDOW_MAXIMIZED)) != 0)
+  if ((SDL_GetWindowFlags(g_render_ctx.window) & (SDL_WINDOW_FULLSCREEN_DESKTOP | SDL_WINDOW_FULLSCREEN | SDL_WINDOW_MINIMIZED | SDL_WINDOW_MAXIMIZED)) != 0)
     return;
-  int screen = SDL_GetWindowDisplayIndex(g_window);
+  int screen = SDL_GetWindowDisplayIndex(g_render_ctx.window);
   if (screen < 0) screen = 0;
   int max_scale = kMaxWindowScale;
   SDL_Rect bounds;
@@ -105,32 +110,34 @@ void ChangeWindowScale(int scale_step) {
   // note this takes into effect Windows display scaling, i.e., resolution is divided by scale factor
   if (SDL_GetDisplayUsableBounds(screen, &bounds) == 0) {
     // this call may take a while before it is reported by Windows (or not at all in my testing)
-    if (SDL_GetWindowBordersSize(g_window, &bt, &bl, &bb, &br) != 0) {
+    if (SDL_GetWindowBordersSize(g_render_ctx.window, &bt, &bl, &bb, &br) != 0) {
       // guess based on Windows 10/11 defaults
-      bl = br = bb = 1;
-      bt = 31;
+      bl = kWindowBorderLeft;
+      br = kWindowBorderRight;
+      bb = kWindowBorderBottom;
+      bt = kWindowBorderTop;
     }
     // Allow a scale level slightly above the max that fits on screen
-    int mw = (bounds.w - bl - br + g_snes_width / 4) / g_snes_width;
-    int mh = (bounds.h - bt - bb + g_snes_height / 4) / g_snes_height;
+    int mw = (bounds.w - bl - br + g_render_ctx.snes_width / 4) / g_render_ctx.snes_width;
+    int mh = (bounds.h - bt - bb + g_render_ctx.snes_height / 4) / g_render_ctx.snes_height;
     max_scale = IntMin(mw, mh);
   }
-  int new_scale = IntMax(IntMin(g_current_window_scale + scale_step, max_scale), 1);
-  g_current_window_scale = new_scale;
-  int w = new_scale * g_snes_width;
-  int h = new_scale * g_snes_height;
+  int new_scale = IntMax(IntMin(g_render_ctx.current_window_scale + scale_step, max_scale), 1);
+  g_render_ctx.current_window_scale = new_scale;
+  int w = new_scale * g_render_ctx.snes_width;
+  int h = new_scale * g_render_ctx.snes_height;
 
-  //SDL_RenderSetLogicalSize(g_renderer, w, h);
-  SDL_SetWindowSize(g_window, w, h);
+  //SDL_RenderSetLogicalSize(g_render_ctx.renderer, w, h);
+  SDL_SetWindowSize(g_render_ctx.window, w, h);
   if (bt >= 0) {
     // Center the window on top of the mouse
     int mx, my;
     SDL_GetGlobalMouseState(&mx, &my);
     int wx = IntMax(IntMin(mx - w / 2, bounds.x + bounds.w - bl - br - w), bounds.x + bl);
     int wy = IntMax(IntMin(my - h / 2, bounds.y + bounds.h - bt - bb - h), bounds.y + bt);
-    SDL_SetWindowPosition(g_window, wx, wy);
+    SDL_SetWindowPosition(g_render_ctx.window, wx, wy);
   } else {
-    SDL_SetWindowPosition(g_window, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED);
+    SDL_SetWindowPosition(g_render_ctx.window, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED);
   }
 }
 
@@ -163,91 +170,85 @@ static SDL_HitTestResult HitTestCallback(SDL_Window *win, const SDL_Point *pt, v
 }
 
 void RtlDrawPpuFrame(uint8 *pixel_buffer, size_t pitch, uint32 render_flags) {
-  uint8 *ppu_pixels = g_other_image ? g_my_pixels : g_pixels;
-  size_t row_bytes = g_snes_width * 4;
-  for (size_t y = 0; y < g_snes_height; y++)
+  uint8 *ppu_pixels = g_game_ctx.other_image ? g_render_ctx.my_pixels : g_render_ctx.pixels;
+  size_t row_bytes = g_render_ctx.snes_width * 4;
+  for (size_t y = 0; y < g_render_ctx.snes_height; y++)
     memcpy((uint8_t *)pixel_buffer + y * pitch, ppu_pixels + y * row_bytes, row_bytes);
 }
 
 static void DrawPpuFrameWithPerf(void) {
-  int render_scale = PpuGetCurrentRenderScale(g_snes->ppu, g_ppu_render_flags);
+  int render_scale = PpuGetCurrentRenderScale(g_game_ctx.snes->ppu, g_render_ctx.ppu_render_flags);
   uint8 *pixel_buffer = 0;
   int pitch = 0;
 
-  g_renderer_funcs.BeginDraw(g_snes_width * render_scale,
-                             g_snes_height * render_scale,
+  g_renderer_funcs.BeginDraw(g_render_ctx.snes_width * render_scale,
+                             g_render_ctx.snes_height * render_scale,
                              &pixel_buffer, &pitch);
-  if (g_display_perf || g_config.display_perf_title) {
+  if (g_render_ctx.display_perf || g_config.display_perf_title) {
     static float history[64], average;
     static int history_pos;
     uint64 before = SDL_GetPerformanceCounter();
-    RtlDrawPpuFrame(pixel_buffer, pitch, g_ppu_render_flags);
+    RtlDrawPpuFrame(pixel_buffer, pitch, g_render_ctx.ppu_render_flags);
     uint64 after = SDL_GetPerformanceCounter();
     float v = (double)SDL_GetPerformanceFrequency() / (after - before);
     average += v - history[history_pos];
     history[history_pos] = v;
     history_pos = (history_pos + 1) & 63;
-    g_curr_fps = average * (1.0f / 64);
+    g_render_ctx.curr_fps = average * (1.0f / 64);
   } else {
-    RtlDrawPpuFrame(pixel_buffer, pitch, g_ppu_render_flags);
+    RtlDrawPpuFrame(pixel_buffer, pitch, g_render_ctx.ppu_render_flags);
   }
-  if (g_display_perf)
-    RenderNumber(pixel_buffer + pitch * render_scale, pitch, g_curr_fps, render_scale == 4);
+  if (g_render_ctx.display_perf)
+    RenderNumber(pixel_buffer + pitch * render_scale, pitch, g_render_ctx.curr_fps, render_scale == 4);
 
-  if (g_got_mismatch_count)
-    RenderNumber(pixel_buffer + pitch * render_scale, pitch, g_got_mismatch_count, render_scale == 4);
+  if (g_game_ctx.got_mismatch_count)
+    RenderNumber(pixel_buffer + pitch * render_scale, pitch, g_game_ctx.got_mismatch_count, render_scale == 4);
 
   g_renderer_funcs.EndDraw();
 }
 
-static SDL_mutex *g_audio_mutex;
-static uint8 *g_audiobuffer, *g_audiobuffer_cur, *g_audiobuffer_end;
-static int g_frames_per_block;
-static uint8 g_audio_channels;
-static SDL_AudioDeviceID g_audio_device;
+// Audio globals migrated to g_audio_ctx
 
 void RtlApuLock(void) {
-  SDL_LockMutex(g_audio_mutex);
+  SDL_LockMutex(g_audio_ctx.mutex);
 }
 
 void RtlApuUnlock(void) {
-  SDL_UnlockMutex(g_audio_mutex);
+  SDL_UnlockMutex(g_audio_ctx.mutex);
 }
 
 static void SDLCALL AudioCallback(void *userdata, Uint8 *stream, int len) {
-  if (SDL_LockMutex(g_audio_mutex)) Die("Mutex lock failed!");
+  if (SDL_LockMutex(g_audio_ctx.mutex)) Die("Mutex lock failed!");
   while (len != 0) {
-    if (g_audiobuffer_end - g_audiobuffer_cur == 0) {
-      RtlRenderAudio((int16 *)g_audiobuffer, g_frames_per_block, g_audio_channels);
-      g_audiobuffer_cur = g_audiobuffer;
-      g_audiobuffer_end = g_audiobuffer + g_frames_per_block * g_audio_channels * sizeof(int16);
+    if (g_audio_ctx.buffer_end - g_audio_ctx.buffer_cur == 0) {
+      // Use _Locked version to avoid recursive mutex locking
+      RtlRenderAudio_Locked((int16 *)g_audio_ctx.buffer, g_audio_ctx.frames_per_block, g_audio_ctx.channels);
+      g_audio_ctx.buffer_cur = g_audio_ctx.buffer;
+      g_audio_ctx.buffer_end = g_audio_ctx.buffer + g_audio_ctx.frames_per_block * g_audio_ctx.channels * sizeof(int16);
     }
-    int n = IntMin(len, g_audiobuffer_end - g_audiobuffer_cur);
-    if (g_sdl_audio_mixer_volume == SDL_MIX_MAXVOLUME) {
-      memcpy(stream, g_audiobuffer_cur, n);
+    int n = IntMin(len, g_audio_ctx.buffer_end - g_audio_ctx.buffer_cur);
+    if (g_audio_ctx.mixer_volume == SDL_MIX_MAXVOLUME) {
+      memcpy(stream, g_audio_ctx.buffer_cur, n);
     } else {
       SDL_memset(stream, 0, n);
-      SDL_MixAudioFormat(stream, g_audiobuffer_cur, AUDIO_S16, n, g_sdl_audio_mixer_volume);
+      SDL_MixAudioFormat(stream, g_audio_ctx.buffer_cur, AUDIO_S16, n, g_audio_ctx.mixer_volume);
     }
-    g_audiobuffer_cur += n;
+    g_audio_ctx.buffer_cur += n;
     stream += n;
     len -= n;
   }
-  SDL_UnlockMutex(g_audio_mutex);
+  SDL_UnlockMutex(g_audio_ctx.mutex);
 }
 
 
-// State for sdl renderer
-static SDL_Renderer *g_renderer;
-static SDL_Texture *g_texture;
-static SDL_Rect g_sdl_renderer_rect;
+// SDL renderer state migrated to g_render_ctx
 
 static bool SdlRenderer_Init(SDL_Window *window) {
 
   if (g_config.shader)
     fprintf(stderr, "Warning: Shaders are supported only with the OpenGL backend\n");
 
-  SDL_Renderer *renderer = SDL_CreateRenderer(g_window, -1,
+  SDL_Renderer *renderer = SDL_CreateRenderer(g_render_ctx.window, -1,
                                               g_config.output_method == kOutputMethod_SDLSoftware ? SDL_RENDERER_SOFTWARE :
                                               SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
   if (renderer == NULL) {
@@ -262,16 +263,16 @@ static bool SdlRenderer_Init(SDL_Window *window) {
       printf(" %s", SDL_GetPixelFormatName(renderer_info.texture_formats[i]));
     printf("\n");
   }
-  g_renderer = renderer;
+  g_render_ctx.renderer = renderer;
   if (!g_config.ignore_aspect_ratio)
-    SDL_RenderSetLogicalSize(renderer, g_snes_width, g_snes_height);
+    SDL_RenderSetLogicalSize(renderer, g_render_ctx.snes_width, g_render_ctx.snes_height);
   if (g_config.linear_filtering)
     SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "best");
 
-  int tex_mult = (g_ppu_render_flags & kPpuRenderFlags_4x4Mode7) ? 4 : 1;
-  g_texture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING,
-                                g_snes_width * tex_mult, g_snes_height * tex_mult);
-  if (g_texture == NULL) {
+  int tex_mult = (g_render_ctx.ppu_render_flags & kPpuRenderFlags_4x4Mode7) ? 4 : 1;
+  g_render_ctx.texture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING,
+                                g_render_ctx.snes_width * tex_mult, g_render_ctx.snes_height * tex_mult);
+  if (g_render_ctx.texture == NULL) {
     printf("Failed to create texture: %s\n", SDL_GetError());
     return false;
   }
@@ -279,14 +280,14 @@ static bool SdlRenderer_Init(SDL_Window *window) {
 }
 
 static void SdlRenderer_Destroy(void) {
-  SDL_DestroyTexture(g_texture);
-  SDL_DestroyRenderer(g_renderer);
+  SDL_DestroyTexture(g_render_ctx.texture);
+  SDL_DestroyRenderer(g_render_ctx.renderer);
 }
 
 static void SdlRenderer_BeginDraw(int width, int height, uint8 **pixels, int *pitch) {
-  g_sdl_renderer_rect.w = width;
-  g_sdl_renderer_rect.h = height;
-  if (SDL_LockTexture(g_texture, &g_sdl_renderer_rect, (void **)pixels, pitch) != 0) {
+  g_render_ctx.renderer_rect.w = width;
+  g_render_ctx.renderer_rect.h = height;
+  if (SDL_LockTexture(g_render_ctx.texture, (SDL_Rect *)&g_render_ctx.renderer_rect, (void **)pixels, pitch) != 0) {
     printf("Failed to lock texture: %s\n", SDL_GetError());
     return;
   }
@@ -294,13 +295,13 @@ static void SdlRenderer_BeginDraw(int width, int height, uint8 **pixels, int *pi
 
 static void SdlRenderer_EndDraw(void) {
   //  uint64 before = SDL_GetPerformanceCounter();
-  SDL_UnlockTexture(g_texture);
+  SDL_UnlockTexture(g_render_ctx.texture);
   //  uint64 after = SDL_GetPerformanceCounter();
   //  float v = (double)(after - before) / SDL_GetPerformanceFrequency();
   //  printf("%f ms\n", v * 1000);
-  SDL_RenderClear(g_renderer);
-  SDL_RenderCopy(g_renderer, g_texture, &g_sdl_renderer_rect, NULL);
-  SDL_RenderPresent(g_renderer); // vsyncs to 60 FPS?
+  SDL_RenderClear(g_render_ctx.renderer);
+  SDL_RenderCopy(g_render_ctx.renderer, g_render_ctx.texture, (SDL_Rect *)&g_render_ctx.renderer_rect, NULL);
+  SDL_RenderPresent(g_render_ctx.renderer); // vsyncs to 60 FPS?
 }
 
 static const struct RendererFuncs kSdlRendererFuncs = {
@@ -310,158 +311,35 @@ static const struct RendererFuncs kSdlRendererFuncs = {
   &SdlRenderer_EndDraw,
 };
 
-
-
-#undef main
-int main(int argc, char** argv) {
-#ifdef __SWITCH__
-  SwitchImpl_Init();
-#endif
-  argc--, argv++;
-  const char *config_file = NULL;
-  if (argc >= 2 && strcmp(argv[0], "--config") == 0) {
-    config_file = argv[1];
-    argc -= 2, argv += 2;
-  } else {
-    SwitchDirectory();
-  }
-  if (argc >= 1 && strcmp(argv[0], "--debug") == 0) {
-    g_debug_flag = true;
-    argc -= 1, argv += 1;
-  }
-  ParseConfigFile(config_file);
-
-  g_snes_width = (g_config.extended_aspect_ratio * 2 + 256);
-  g_snes_height = 240;// (g_config.extend_y ? 240 : 224);
-  g_ppu_render_flags = g_config.new_renderer * kPpuRenderFlags_NewRenderer |
-    g_config.enhanced_mode7 * kPpuRenderFlags_4x4Mode7 |
-    g_config.extend_y * kPpuRenderFlags_Height240 |
-    g_config.no_sprite_limits * kPpuRenderFlags_NoSpriteLimits;
-
-  // Allocate pixel buffers based on configured width/height
-  size_t pixel_buffer_size = g_snes_width * 4 * g_snes_height;
-  g_pixels = (uint8_t *)malloc(pixel_buffer_size);
-  g_my_pixels = (uint8_t *)malloc(pixel_buffer_size);
-  if (!g_pixels || !g_my_pixels) {
-    Die("Failed to allocate pixel buffers");
-  }
-  memset(g_pixels, 0, pixel_buffer_size);
-  memset(g_my_pixels, 0, pixel_buffer_size);
-
-  if (g_config.fullscreen == 1)
-    g_win_flags ^= SDL_WINDOW_FULLSCREEN_DESKTOP;
-  else if (g_config.fullscreen == 2)
-    g_win_flags ^= SDL_WINDOW_FULLSCREEN;
-
-  // Window scale (1=100%, 2=200%, 3=300%, etc.)
-  g_current_window_scale = (g_config.window_scale == 0) ? 2 : IntMin(g_config.window_scale, kMaxWindowScale);
-
-  // audio_freq: Use common sampling rates (see user config file. values higher than 48000 are not supported.)
-  if (g_config.audio_freq < 11025 || g_config.audio_freq > 48000)
-    g_config.audio_freq = kDefaultFreq;
-
-  // Currently, the SPC/DSP implementation only supports up to stereo.
-  if (g_config.audio_channels < 1 || g_config.audio_channels > 2)
-    g_config.audio_channels = kDefaultChannels;
-
-  // audio_samples: power of 2
-  if (g_config.audio_samples <= 0 || ((g_config.audio_samples & (g_config.audio_samples - 1)) != 0))
-    g_config.audio_samples = kDefaultSamples;
-
-  // set up SDL
-  if(SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_GAMECONTROLLER) != 0) {
-    printf("Failed to init SDL: %s\n", SDL_GetError());
-    return 1;
-  }
-
-  bool custom_size = g_config.window_width != 0 && g_config.window_height != 0;
-  int window_width = custom_size ? g_config.window_width : g_current_window_scale * g_snes_width;
-  int window_height = custom_size ? g_config.window_height : g_current_window_scale * g_snes_height;
-
-  if (g_config.output_method == kOutputMethod_OpenGL) {
-    g_win_flags |= SDL_WINDOW_OPENGL;
-    OpenGLRenderer_Create(&g_renderer_funcs);
-  } else {
-    g_renderer_funcs = kSdlRendererFuncs;
-  }
-
-  // init snes, load rom
-  const char* filename = argv[0] ? argv[0] : "sm.smc";
-  Snes *snes = SnesInit(filename);
-
-  if(snes == NULL) {
-  #ifdef __SWITCH__
-    ThrowMissingROM();
-  #else
-    char buf[256];
-    snprintf(buf, sizeof(buf), "unable to load rom: %s", filename);
-    Die(buf);
-  #endif
-    return 1;
-  }
-
-  // Initialize PPU widescreen settings
-  uint8 extra_pixels = g_config.extended_aspect_ratio < kPpuExtraLeftRight ? g_config.extended_aspect_ratio : kPpuExtraLeftRight;
-  snes->snes_ppu->extraLeftRight = extra_pixels;
-  snes->my_ppu->extraLeftRight = extra_pixels;
-  // Start with full widescreen enabled (dynamic adjustment will modify these per-frame)
-  snes->snes_ppu->extraLeftCur = extra_pixels;
-  snes->snes_ppu->extraRightCur = extra_pixels;
-  snes->my_ppu->extraLeftCur = extra_pixels;
-  snes->my_ppu->extraRightCur = extra_pixels;
-
-  SDL_Window *window = SDL_CreateWindow(kWindowTitle, SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, window_width, window_height, g_win_flags);
-  if(window == NULL) {
-    printf("Failed to create window: %s\n", SDL_GetError());
-    return 1;
-  }
-  g_window = window;
-  SDL_SetWindowHitTest(window, HitTestCallback, NULL);
-
-  if (!g_renderer_funcs.Initialize(window))
-    return 1;
-
-  g_audio_mutex = SDL_CreateMutex();
-  if (!g_audio_mutex) Die("No mutex");
-
-  g_spc_player = SpcPlayer_Create();
-  SpcPlayer_Initialize(g_spc_player);
-
-  bool enable_audio = true;
-  if (enable_audio) {
-    SDL_AudioSpec want = { 0 }, have;
-    want.freq = 44100;
-    want.format = AUDIO_S16;
-    want.channels = 2;
-    want.samples = 2048;
-    want.callback = &AudioCallback;
-    g_audio_device = SDL_OpenAudioDevice(NULL, 0, &want, &have, 0);
-    if (g_audio_device == 0) {
-      printf("Failed to open audio device: %s\n", SDL_GetError());
-      return 1;
-    }
-    g_audio_channels = 2;
-    g_frames_per_block = (534 * have.freq) / 32000;
-    g_audiobuffer = (uint8 *)malloc(g_frames_per_block * have.channels * sizeof(int16));
-  }
-
-  PpuBeginDrawing(snes->snes_ppu, g_pixels, g_snes_width * 4, 0);
-  PpuBeginDrawing(snes->my_ppu, g_my_pixels, g_snes_width * 4, 0);
-
-#if defined(_WIN32)
-  _mkdir("saves");
-#else
-  mkdir("saves", 0755);
-#endif
-
-  RtlReadSram();
-
-  for (int i = 0; i < SDL_NumJoysticks(); i++)
-    OpenOneGamepad(i);
-
+// Cleanup and shutdown all subsystems
+static void Cleanup(void) {
   if (g_config.autosave)
-    HandleCommand(kKeys_Load + 0, true);
+    HandleCommand(kKeys_Save + 0, true);
 
+  // clean sdl
+  SDL_PauseAudioDevice(g_audio_ctx.device, 1);
+  SDL_CloseAudioDevice(g_audio_ctx.device);
+  SDL_DestroyMutex(g_audio_ctx.mutex);
+  free(g_audio_ctx.buffer);
+
+  g_renderer_funcs.Destroy();
+
+#ifdef __SWITCH__
+  SwitchImpl_Exit();
+#endif
+
+  // Cleanup config memory buffer
+  if (g_config.memory_buffer) {
+    free(g_config.memory_buffer);
+    g_config.memory_buffer = NULL;
+  }
+
+  SDL_DestroyWindow(g_render_ctx.window);
+  SDL_Quit();
+}
+
+// Main game loop - handles events, runs game logic, and renders frames
+static void RunGameLoop(void) {
   bool running = true;
   uint32 lastTick = SDL_GetTicks();
   uint32 curTick = 0;
@@ -493,9 +371,9 @@ int main(int argc, char** argv) {
         break;
       case SDL_MOUSEBUTTONDOWN:
         if (event.button.button == SDL_BUTTON_LEFT && event.button.state == SDL_PRESSED && event.button.clicks == 2) {
-          if ((g_win_flags & SDL_WINDOW_FULLSCREEN_DESKTOP) == 0 && (g_win_flags & SDL_WINDOW_FULLSCREEN) == 0 && SDL_GetModState() & KMOD_SHIFT) {
-            g_win_flags ^= SDL_WINDOW_BORDERLESS;
-            SDL_SetWindowBordered(g_window, (g_win_flags & SDL_WINDOW_BORDERLESS) == 0 ? SDL_TRUE : SDL_FALSE);
+          if ((g_render_ctx.win_flags & SDL_WINDOW_FULLSCREEN_DESKTOP) == 0 && (g_render_ctx.win_flags & SDL_WINDOW_FULLSCREEN) == 0 && SDL_GetModState() & KMOD_SHIFT) {
+            g_render_ctx.win_flags ^= SDL_WINDOW_BORDERLESS;
+            SDL_SetWindowBordered(g_render_ctx.window, (g_render_ctx.win_flags & SDL_WINDOW_BORDERLESS) == 0 ? SDL_TRUE : SDL_FALSE);
           }
         }
         break;
@@ -513,8 +391,8 @@ int main(int argc, char** argv) {
 
     if (g_paused != audiopaused) {
       audiopaused = g_paused;
-      if (g_audio_device)
-        SDL_PauseAudioDevice(g_audio_device, audiopaused);
+      if (g_audio_ctx.device)
+        SDL_PauseAudioDevice(g_audio_ctx.device, audiopaused);
     }
 
     if (g_paused) {
@@ -531,28 +409,28 @@ int main(int argc, char** argv) {
     uint8 is_replay = RtlRunFrame(inputs);
 
     frameCtr++;
-    g_snes->disableRender = (g_turbo ^ (is_replay & g_replay_turbo)) && (frameCtr & (g_turbo ? 0xf : 0x7f)) != 0;
+    g_game_ctx.snes->disableRender = (g_turbo ^ (is_replay & g_replay_turbo)) && (frameCtr & (g_turbo ? 0xf : 0x7f)) != 0;
 
-    if (!g_snes->disableRender)
+    if (!g_game_ctx.snes->disableRender)
       DrawPpuFrameWithPerf();
 
-    bool want_bug_in_title = (g_got_mismatch_count != 0);
+    bool want_bug_in_title = (g_game_ctx.got_mismatch_count != 0);
     if (want_bug_in_title != has_bug_in_title) {
       has_bug_in_title = want_bug_in_title;
       char title[60];
       if (want_bug_in_title) {
         snprintf(title, sizeof(title), "%s | BUG FOUND!", kWindowTitle);
-        SDL_SetWindowTitle(g_window, title);
+        SDL_SetWindowTitle(g_render_ctx.window, title);
       } else {
-        SDL_SetWindowTitle(g_window, kWindowTitle);
+        SDL_SetWindowTitle(g_render_ctx.window, kWindowTitle);
       }
     }
 
     // if vsync isn't working, delay manually
     curTick = SDL_GetTicks();
 
-    if (!g_snes->disableRender && !g_config.disable_frame_delay) {
-      static const uint8 delays[3] = { 17, 17, 16 }; // 60 fps
+    if (!g_game_ctx.snes->disableRender && !g_config.disable_frame_delay) {
+      static const uint8 delays[3] = { kFrameDelayMs_60fps_0, kFrameDelayMs_60fps_1, kFrameDelayMs_60fps_2 };
       lastTick += delays[frameCtr % 3];
 
       if (lastTick > curTick) {
@@ -568,25 +446,223 @@ int main(int argc, char** argv) {
       }
     }
   }
+}
 
-  if (g_config.autosave)
-    HandleCommand(kKeys_Save + 0, true);
+// Setup audio system (mutex, SPC player, audio device)
+static bool SetupAudio(void) {
+  // Initialize audio context
+  g_audio_ctx.mutex = SDL_CreateMutex();
+  if (!g_audio_ctx.mutex) Die("No mutex");
+  g_audio_ctx.mixer_volume = SDL_MIX_MAXVOLUME;
 
-  // clean sdl
-  SDL_PauseAudioDevice(g_audio_device, 1);
-  SDL_CloseAudioDevice(g_audio_device);
-  SDL_DestroyMutex(g_audio_mutex);
-  free(g_audiobuffer);
+  g_spc_player = SpcPlayer_Create();
+  SpcPlayer_Initialize(g_spc_player);
 
-  g_renderer_funcs.Destroy();
+  bool enable_audio = true;
+  if (enable_audio) {
+    SDL_AudioSpec want = { 0 }, have;
+    want.freq = 44100;
+    want.format = AUDIO_S16;
+    want.channels = 2;
+    want.samples = 2048;
+    want.callback = &AudioCallback;
+    g_audio_ctx.device = SDL_OpenAudioDevice(NULL, 0, &want, &have, 0);
+    if (g_audio_ctx.device == 0) {
+      LogError("Failed to open audio device: %s", SDL_GetError());
+      return false;
+    }
+    g_audio_ctx.channels = 2;
+    g_audio_ctx.frames_per_block = (534 * have.freq) / 32000;
+    g_audio_ctx.buffer = (uint8 *)xmalloc(g_audio_ctx.frames_per_block * have.channels * sizeof(int16));
+    g_audio_ctx.buffer_cur = g_audio_ctx.buffer;
+    g_audio_ctx.buffer_end = g_audio_ctx.buffer;
+  }
 
+  return true;
+}
+
+// Setup SDL, window, renderer, and load ROM
+static bool SetupWindowAndRenderer(const char *rom_filename) {
+  // set up SDL
+  if(SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_GAMECONTROLLER) != 0) {
+    LogError("Failed to init SDL: %s", SDL_GetError());
+    return false;
+  }
+
+  bool custom_size = g_config.window_width != 0 && g_config.window_height != 0;
+  int window_width = custom_size ? g_config.window_width : g_render_ctx.current_window_scale * g_render_ctx.snes_width;
+  int window_height = custom_size ? g_config.window_height : g_render_ctx.current_window_scale * g_render_ctx.snes_height;
+
+  if (g_config.output_method == kOutputMethod_OpenGL) {
+    g_render_ctx.win_flags |= SDL_WINDOW_OPENGL;
+    OpenGLRenderer_Create(&g_renderer_funcs);
+  } else {
+    g_renderer_funcs = kSdlRendererFuncs;
+  }
+
+  // init snes, load rom
+  const char* filename = rom_filename ? rom_filename : "sm.smc";
+  g_game_ctx.snes = g_snes = SnesInit(filename);
+
+  if(g_game_ctx.snes == NULL) {
+  #ifdef __SWITCH__
+    ThrowMissingROM();
+  #else
+    char buf[256];
+    snprintf(buf, sizeof(buf), "unable to load rom: %s", filename);
+    Die(buf);
+  #endif
+    return false;
+  }
+
+  // Initialize PPU widescreen settings
+  uint8 extra_pixels = g_config.extended_aspect_ratio < kPpuExtraLeftRight ? g_config.extended_aspect_ratio : kPpuExtraLeftRight;
+  g_game_ctx.snes->snes_ppu->extraLeftRight = extra_pixels;
+  g_game_ctx.snes->my_ppu->extraLeftRight = extra_pixels;
+  // Start with full widescreen enabled (dynamic adjustment will modify these per-frame)
+  g_game_ctx.snes->snes_ppu->extraLeftCur = extra_pixels;
+  g_game_ctx.snes->snes_ppu->extraRightCur = extra_pixels;
+  g_game_ctx.snes->my_ppu->extraLeftCur = extra_pixels;
+  g_game_ctx.snes->my_ppu->extraRightCur = extra_pixels;
+
+  g_render_ctx.window = SDL_CreateWindow(kWindowTitle, SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, window_width, window_height, g_render_ctx.win_flags);
+  if(g_render_ctx.window == NULL) {
+    LogError("Failed to create window: %s", SDL_GetError());
+    return false;
+  }
+  SDL_SetWindowHitTest(g_render_ctx.window, HitTestCallback, NULL);
+
+  if (!g_renderer_funcs.Initialize(g_render_ctx.window)) {
+    SDL_DestroyWindow(g_render_ctx.window);
+    return false;
+  }
+
+  return true;
+}
+
+// Initialize game and render contexts with validated configuration
+static void InitializeContexts(void) {
+  // Validate that extended aspect ratio doesn't exceed PPU maximum
+  assert(g_config.extended_aspect_ratio <= kPpuExtraLeftRight &&
+         "Extended aspect ratio exceeds PPU buffer limits");
+
+  // Initialize game context
+  g_game_ctx.other_image = false;
+  g_game_ctx.is_turbo = false;
+  g_game_ctx.want_dump_memmap_flags = false;
+  g_game_ctx.got_mismatch_count = 0;
+
+  // Initialize render context
+  g_render_ctx.snes_width = (g_config.extended_aspect_ratio * 2 + 256);
+  g_render_ctx.snes_height = 240;// (g_config.extend_y ? 240 : 224);
+  g_render_ctx.ppu_render_flags = g_config.new_renderer * kPpuRenderFlags_NewRenderer |
+    g_config.enhanced_mode7 * kPpuRenderFlags_4x4Mode7 |
+    g_config.extend_y * kPpuRenderFlags_Height240 |
+    g_config.no_sprite_limits * kPpuRenderFlags_NoSpriteLimits;
+
+  // Allocate pixel buffers based on configured width/height
+  size_t pixel_buffer_size = g_render_ctx.snes_width * 4 * g_render_ctx.snes_height;
+  g_render_ctx.pixels = (uint8_t *)xmalloc(pixel_buffer_size);
+  g_render_ctx.my_pixels = (uint8_t *)xmalloc(pixel_buffer_size);
+  memset(g_render_ctx.pixels, 0, pixel_buffer_size);
+  memset(g_render_ctx.my_pixels, 0, pixel_buffer_size);
+
+  g_render_ctx.win_flags = SDL_WINDOW_RESIZABLE;
+  if (g_config.fullscreen == 1)
+    g_render_ctx.win_flags ^= SDL_WINDOW_FULLSCREEN_DESKTOP;
+  else if (g_config.fullscreen == 2)
+    g_render_ctx.win_flags ^= SDL_WINDOW_FULLSCREEN;
+
+  // Window scale (1=100%, 2=200%, 3=300%, etc.)
+  g_render_ctx.current_window_scale = (g_config.window_scale == 0) ? 2 : IntMin(g_config.window_scale, kMaxWindowScale);
+
+  // Validate audio configuration
+  // audio_freq: Use common sampling rates (see user config file. values higher than 48000 are not supported.)
+  if (g_config.audio_freq < 11025 || g_config.audio_freq > 48000)
+    g_config.audio_freq = kDefaultFreq;
+
+  // Currently, the SPC/DSP implementation only supports up to stereo.
+  if (g_config.audio_channels < 1 || g_config.audio_channels > 2)
+    g_config.audio_channels = kDefaultChannels;
+
+  // audio_samples: power of 2
+  if (g_config.audio_samples <= 0 || ((g_config.audio_samples & (g_config.audio_samples - 1)) != 0))
+    g_config.audio_samples = kDefaultSamples;
+}
+
+
+#undef main
+int main(int argc, char** argv) {
 #ifdef __SWITCH__
-  SwitchImpl_Exit();
+  SwitchImpl_Init();
+#endif
+  InitializeLogging();
+  argc--, argv++;
+  const char *config_file = NULL;
+  if (argc >= 2 && strcmp(argv[0], "--config") == 0) {
+    config_file = argv[1];
+    argc -= 2, argv += 2;
+  } else {
+    SwitchDirectory();
+  }
+  if (argc >= 1 && strcmp(argv[0], "--debug") == 0) {
+    g_game_ctx.emulator_debug_flag = true;
+    argc -= 1, argv += 1;
+  }
+  ParseConfigFile(config_file);
+  InitializeContexts();
+
+  if (!SetupWindowAndRenderer(argv[0])) {
+    return 1;
+  }
+
+  if (!SetupAudio()) {
+    return 1;
+  }
+
+  PpuBeginDrawing(g_game_ctx.snes->snes_ppu, g_render_ctx.pixels, g_render_ctx.snes_width * 4, 0);
+  PpuBeginDrawing(g_game_ctx.snes->my_ppu, g_render_ctx.my_pixels, g_render_ctx.snes_width * 4, 0);
+
+#if defined(_WIN32)
+  _mkdir("saves");
+#else
+  mkdir("saves", 0755);
 #endif
 
-  SDL_DestroyWindow(window);
-  SDL_Quit();
+  RtlReadSram();
+
+  for (int i = 0; i < SDL_NumJoysticks(); i++)
+    OpenOneGamepad(i);
+
+  if (g_config.autosave)
+    HandleCommand(kKeys_Load + 0, true);
+
+  RunGameLoop();
+
+  Cleanup();
   return 0;
+}
+
+static void RenderDigitSmall(uint8 *dst, size_t pitch, const uint8 *p, uint32 color) {
+  for (int y = 0; y < 10; y++, dst += pitch) {
+    int v = *p++;
+    for (int x = 0; v; x++, v >>= 1) {
+      if (v & 1)
+        ((uint32 *)dst)[x] = color;
+    }
+  }
+}
+
+static void RenderDigitBig(uint8 *dst, size_t pitch, const uint8 *p, uint32 color) {
+  for (int y = 0; y < 10; y++, dst += pitch * 2) {
+    int v = *p++;
+    for (int x = 0; v; x++, v >>= 1) {
+      if (v & 1) {
+        ((uint32 *)dst)[x * 2 + 1] = ((uint32 *)dst)[x * 2] = color;
+        ((uint32 *)(dst + pitch))[x * 2 + 1] = ((uint32 *)(dst + pitch))[x * 2] = color;
+      }
+    }
+  }
 }
 
 static void RenderDigit(uint8 *dst, size_t pitch, int digit, uint32 color, bool big) {
@@ -603,25 +679,10 @@ static void RenderDigit(uint8 *dst, size_t pitch, int digit, uint32 color, bool 
     0x3e, 0x63, 0x63, 0x63, 0x7e, 0x60, 0x60, 0x60, 0x30, 0x1e,
   };
   const uint8 *p = kFont + digit * 10;
-  if (!big) {
-    for (int y = 0; y < 10; y++, dst += pitch) {
-      int v = *p++;
-      for (int x = 0; v; x++, v >>= 1) {
-        if (v & 1)
-          ((uint32 *)dst)[x] = color;
-      }
-    }
-  } else {
-    for (int y = 0; y < 10; y++, dst += pitch * 2) {
-      int v = *p++;
-      for (int x = 0; v; x++, v >>= 1) {
-        if (v & 1) {
-          ((uint32 *)dst)[x * 2 + 1] = ((uint32 *)dst)[x * 2] = color;
-          ((uint32 *)(dst + pitch))[x * 2 + 1] = ((uint32 *)(dst + pitch))[x * 2] = color;
-        }
-      }
-    }
-  }
+  if (!big)
+    RenderDigitSmall(dst, pitch, p, color);
+  else
+    RenderDigitBig(dst, pitch, p, color);
 }
 
 
@@ -667,13 +728,13 @@ static void HandleCommand(uint32 j, bool pressed) {
     case kKeys_CheatLife: RtlCheat('w'); break;
     case kKeys_CheatJump: RtlCheat('q'); break;
     case kKeys_ToggleWhichFrame:
-      g_other_image = !g_other_image;
+      g_game_ctx.other_image = !g_game_ctx.other_image;
       break;
     case kKeys_ClearKeyLog: RtlClearKeyLog(); break;
     case kKeys_StopReplay: RtlStopReplay(); break;
     case kKeys_Fullscreen:
-      g_win_flags ^= SDL_WINDOW_FULLSCREEN_DESKTOP;
-      SDL_SetWindowFullscreen(g_window, g_win_flags & SDL_WINDOW_FULLSCREEN_DESKTOP);
+      g_render_ctx.win_flags ^= SDL_WINDOW_FULLSCREEN_DESKTOP;
+      SDL_SetWindowFullscreen(g_render_ctx.window, g_render_ctx.win_flags & SDL_WINDOW_FULLSCREEN_DESKTOP);
       g_cursor = !g_cursor;
       SDL_ShowCursor(g_cursor);
       break;
@@ -687,20 +748,20 @@ static void HandleCommand(uint32 j, bool pressed) {
       // Seems to work on Windows still. Temporary measure until it's fixed.
 #ifdef _WIN32
       if (g_paused) {
-        SDL_SetRenderDrawBlendMode(g_renderer, SDL_BLENDMODE_BLEND);
-        SDL_SetRenderDrawColor(g_renderer, 0, 0, 0, 159);
-        SDL_RenderFillRect(g_renderer, NULL);
-        SDL_RenderPresent(g_renderer);
+        SDL_SetRenderDrawBlendMode(g_render_ctx.renderer, SDL_BLENDMODE_BLEND);
+        SDL_SetRenderDrawColor(g_render_ctx.renderer, 0, 0, 0, 159);
+        SDL_RenderFillRect(g_render_ctx.renderer, NULL);
+        SDL_RenderPresent(g_render_ctx.renderer);
       }
 #endif
       break;
     case kKeys_ReplayTurbo: g_replay_turbo = !g_replay_turbo; break;
     case kKeys_WindowBigger: ChangeWindowScale(1); break;
     case kKeys_WindowSmaller: ChangeWindowScale(-1); break;
-    case kKeys_DisplayPerf: g_display_perf ^= 1; break;
+    case kKeys_DisplayPerf: g_render_ctx.display_perf ^= 1; break;
     case kKeys_ToggleRenderer:
-      g_ppu_render_flags ^= kPpuRenderFlags_NewRenderer;
-      g_new_ppu = (g_ppu_render_flags & kPpuRenderFlags_NewRenderer) != 0;
+      g_render_ctx.ppu_render_flags ^= kPpuRenderFlags_NewRenderer;
+      g_new_ppu = (g_render_ctx.ppu_render_flags & kPpuRenderFlags_NewRenderer) != 0;
       break;
     case kKeys_VolumeUp:
     case kKeys_VolumeDown: HandleVolumeAdjustment(j == kKeys_VolumeUp ? 1 : -1); break;
@@ -761,8 +822,8 @@ static void HandleVolumeAdjustment(int volume_adjustment) {
   SetApplicationVolume(new_volume);
   printf("[System Volume]=%i\n", new_volume);
 #else
-  g_sdl_audio_mixer_volume = IntMin(IntMax(0, g_sdl_audio_mixer_volume + volume_adjustment * (SDL_MIX_MAXVOLUME >> 4)), SDL_MIX_MAXVOLUME);
-  printf("[SDL mixer volume]=%i\n", g_sdl_audio_mixer_volume);
+  g_audio_ctx.mixer_volume = IntMin(IntMax(0, g_audio_ctx.mixer_volume + volume_adjustment * (SDL_MIX_MAXVOLUME >> 4)), SDL_MIX_MAXVOLUME);
+  printf("[SDL mixer volume]=%i\n", g_audio_ctx.mixer_volume);
 #endif
 }
 
@@ -792,14 +853,14 @@ static void HandleGamepadAxisInput(int gamepad_id, int axis, int value) {
   if (axis == SDL_CONTROLLER_AXIS_LEFTX || axis == SDL_CONTROLLER_AXIS_LEFTY) {
     // ignore other gamepads unless they have a big input
     if (last_gamepad_id != gamepad_id) {
-      if (value > -16000 && value < 16000)
+      if (value > -kTriggerPressThreshold && value < kTriggerPressThreshold)
         return;
       last_gamepad_id = gamepad_id;
       last_x = last_y = 0;
     }
     *(axis == SDL_CONTROLLER_AXIS_LEFTX ? &last_x : &last_y) = value;
     int buttons = 0;
-    if (last_x * last_x + last_y * last_y >= 10000 * 10000) {
+    if (last_x * last_x + last_y * last_y >= kGamepadDeadzoneSq) {
       // in the non deadzone part, divide the circle into eight 45 degree
       // segments rotated by 22.5 degrees that control which direction to move.
       // todo: do this without floats?
@@ -818,8 +879,11 @@ static void HandleGamepadAxisInput(int gamepad_id, int axis, int value) {
     }
     g_gamepad_buttons = buttons;
   } else if ((axis == SDL_CONTROLLER_AXIS_TRIGGERLEFT || axis == SDL_CONTROLLER_AXIS_TRIGGERRIGHT)) {
-    if (value < 12000 || value >= 16000)  // hysteresis
-      HandleGamepadInput(axis == SDL_CONTROLLER_AXIS_TRIGGERLEFT ? kGamepadBtn_L2 : kGamepadBtn_R2, value >= 12000);
+    // Trigger axes range from 0-32767 (never negative)
+    // Apply hysteresis: < release threshold = released, >= press threshold = pressed
+    if (value < 0) value = 0;  // Safety check for invalid data
+    if (value < kTriggerReleaseThreshold || value >= kTriggerPressThreshold)
+      HandleGamepadInput(axis == SDL_CONTROLLER_AXIS_TRIGGERLEFT ? kGamepadBtn_L2 : kGamepadBtn_R2, value >= kTriggerPressThreshold);
   }
 }
 

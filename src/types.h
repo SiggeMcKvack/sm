@@ -162,6 +162,58 @@ typedef struct Rect16U {
 #define __CASSERT_N1__(l) __CASSERT_N0__(l)
 #define CASSERT(cnd) typedef char __CASSERT_N1__(__LINE__) [(cnd) ? 1 : -1]
 
+// Forward declarations for SDL types (actual definitions in SDL headers)
+typedef struct SDL_Window SDL_Window;
+typedef struct SDL_Renderer SDL_Renderer;
+typedef struct SDL_Texture SDL_Texture;
+typedef struct SDL_mutex SDL_mutex;
+typedef uint32 SDL_AudioDeviceID;
+
+// Simple rect structure for render context (avoids SDL header dependency)
+typedef struct {
+  int x, y, w, h;
+} RendererRect;
+
+// Context structures for organizing global state
+typedef struct AudioContext {
+  SDL_mutex *mutex;
+  SDL_AudioDeviceID device;
+  uint8 *buffer;
+  uint8 *buffer_cur;
+  uint8 *buffer_end;
+  uint8 channels;
+  int frames_per_block;
+  int mixer_volume;
+} AudioContext;
+
+typedef struct RenderContext {
+  SDL_Window *window;
+  SDL_Renderer *renderer;       // SDL renderer backend (may be NULL if using OpenGL)
+  SDL_Texture *texture;          // SDL texture (may be NULL if using OpenGL)
+  RendererRect renderer_rect;   // Renderer rectangle
+  uint8 *pixels;                 // Pixel buffer for emulated display
+  uint8 *my_pixels;              // Secondary pixel buffer
+  int snes_width;                // Display width
+  int snes_height;               // Display height
+  int ppu_render_flags;          // PPU rendering flags
+  uint8 current_window_scale;    // Current window scale factor
+  int curr_fps;                  // Current FPS counter
+  bool display_perf;             // Whether to display performance info
+  uint32 win_flags;              // SDL window flags
+} RenderContext;
+
+// Forward declaration for Snes type (defined elsewhere)
+typedef struct Snes Snes;
+
+typedef struct GameContext {
+  Snes *snes;                    // SNES emulator instance
+  bool emulator_debug_flag;      // Emulator debug mode (not to be confused with game's debug_flag)
+  bool is_turbo;                 // Turbo mode active
+  bool want_dump_memmap_flags;   // Request memory map dump
+  bool other_image;              // Alternate image mode
+  int got_mismatch_count;        // Frame mismatch counter
+} GameContext;
+
 
 #endif  // SM_TYPES_H_
 

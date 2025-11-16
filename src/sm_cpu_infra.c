@@ -9,6 +9,7 @@
 #include "funcs.h"
 #include "sm_rtl.h"
 #include "util.h"
+#include "logging.h"
 #include "enemy_types.h"
 #include <time.h>
 
@@ -17,7 +18,11 @@ void RtlRunFrameCompare(uint16 input, int run_what);
 enum RunMode { RM_BOTH, RM_MINE, RM_THEIRS };
 uint8 g_runmode = RM_BOTH;
 
-extern int g_got_mismatch_count;
+enum {
+  kBugCountdownFrames = 300,  // 5 seconds at 60 FPS (5 * 60)
+};
+
+extern GameContext g_game_ctx;
 
 Snes *g_snes;
 Cpu *g_cpu;
@@ -26,7 +31,6 @@ bool g_calling_asm_from_c;
 int g_calling_asm_from_c_ret;
 bool g_fail;
 bool g_use_my_apu_code = true;
-extern bool g_other_image;
 
 typedef struct Snapshot {
   uint16 a, x, y, sp, dp, pc;
@@ -467,6 +471,48 @@ bool HookedFunctionRts(int is_long) {
   return false;
 }
 
+// Compare byte-based memory regions (RAM, SRAM) with smart byte/word formatting
+static void CompareByteRegion(const char *region_name, const uint8 *mine, const uint8 *theirs,
+                               const uint8 *prev, size_t size, int max_diffs) {
+  if (memcmp(mine, theirs, size)) {
+    LogError("@%d: %s compare failed (mine != theirs, prev):", snes_frame_counter, region_name);
+    int j = 0;
+    for (size_t i = 0; i < size; i++) {
+      if (theirs[i] != mine[i]) {
+        if (++j < max_diffs) {
+          // Smart formatting: print as word if both bytes differ and properly aligned
+          if (((i & 1) == 0 || i < 0x10000) && i + 1 < size && theirs[i + 1] != mine[i + 1]) {
+            LogError("0x%.6X: %.4X != %.4X (%.4X)", (int)i,
+                    WORD(mine[i]), WORD(theirs[i]), WORD(prev[i]));
+            i++, j++;
+          } else {
+            LogError("0x%.6X: %.2X != %.2X (%.2X)", (int)i, mine[i], theirs[i], prev[i]);
+          }
+        }
+      }
+    }
+    if (j)
+      g_fail = true;
+    LogError("  total of %d failed bytes", (int)j);
+  }
+}
+
+// Compare word-based memory regions (VRAM, OAM)
+static void CompareWordRegion(const char *region_name, const uint16 *mine, const uint16 *theirs,
+                               const uint16 *prev, size_t word_count, int max_diffs) {
+  if (memcmp(mine, theirs, sizeof(uint16) * word_count)) {
+    LogError("@%d: %s compare failed (mine != theirs, prev):", snes_frame_counter, region_name);
+    for (size_t i = 0, j = 0; i < word_count; i++) {
+      if (theirs[i] != mine[i]) {
+        LogError("0x%.6X: %.4X != %.4X (%.4X)", (int)i, mine[i], theirs[i], prev[i]);
+        g_fail = true;
+        if (++j >= max_diffs)
+          break;
+      }
+    }
+  }
+}
+
 static void VerifySnapshotsEq(Snapshot *b, Snapshot *a, Snapshot *prev) {
   memcpy(&b->ram[0x0], &a->ram[0x0], 0x51);  // r18, r20, R22 etc
   memcpy(&b->ram[0x1f5b], &a->ram[0x1f5b], 0x100 - 0x5b);  // stacck
@@ -520,73 +566,13 @@ static void VerifySnapshotsEq(Snapshot *b, Snapshot *a, Snapshot *prev) {
   memcpy(&a->ram[0x99cc], &b->ram[0x99cc], 2);  // XrayHdmaFunc_BeamAimedL writes outside
   memcpy(&a->ram[0xEF74], &b->ram[0xEF74], 4);  // next_enemy_tiles_index
   memcpy(&a->ram[0xF37A], &b->ram[0xF37A], 6);  // word_7EF37A etc
-  
 
-  if (memcmp(b->ram, a->ram, 0x20000)) {
-    fprintf(stderr, "@%d: Memory compare failed (mine != theirs, prev):\n", snes_frame_counter);
-    int j = 0;
-    for (size_t i = 0; i < 0x20000; i++) {
-      if (a->ram[i] != b->ram[i]) {
-        if (++j < 256) {
-          if (((i & 1) == 0 || i < 0x10000) && a->ram[i + 1] != b->ram[i + 1]) {
-            fprintf(stderr, "0x%.6X: %.4X != %.4X (%.4X)\n", (int)i,
-                    WORD(b->ram[i]), WORD(a->ram[i]), WORD(prev->ram[i]));
-            i++, j++;
-          } else {
-            fprintf(stderr, "0x%.6X: %.2X != %.2X (%.2X)\n", (int)i, b->ram[i], a->ram[i], prev->ram[i]);
-          }
-        }
-      }
-    }
-    if (j)
-      g_fail = true;
-    fprintf(stderr, "  total of %d failed bytes\n", (int)j);
-  }
-
-  if (memcmp(b->sram, a->sram, 0x2000)) {
-    fprintf(stderr, "@%d: SRAM compare failed (mine != theirs, prev):\n", snes_frame_counter);
-    int j = 0;
-    for (size_t i = 0; i < 0x2000; i++) {
-      if (a->sram[i] != b->sram[i]) {
-        if (++j < 128) {
-          if ((i & 1) == 0 && a->sram[i + 1] != b->sram[i + 1]) {
-            fprintf(stderr, "0x%.6X: %.4X != %.4X (%.4X)\n", (int)i,
-                    WORD(b->sram[i]), WORD(a->sram[i]), WORD(prev->sram[i]));
-            i++, j++;
-          } else {
-            fprintf(stderr, "0x%.6X: %.2X != %.2X (%.2X)\n", (int)i, b->sram[i], a->sram[i], prev->sram[i]);
-          }
-        }
-      }
-    }
-    if (j)
-      g_fail = true;
-    fprintf(stderr, "  total of %d failed bytes\n", (int)j);
-  }
+  // Compare all memory regions and report differences
+  CompareByteRegion("Memory", b->ram, a->ram, prev->ram, 0x20000, 256);
+  CompareByteRegion("SRAM", b->sram, a->sram, prev->sram, 0x2000, 128);
 #if 1
-  if (memcmp(b->vram, a->vram, sizeof(uint16) * 0x8000)) {
-    fprintf(stderr, "@%d: VRAM compare failed (mine != theirs, prev):\n", snes_frame_counter);
-    for (size_t i = 0, j = 0; i < 0x8000; i++) {
-      if (a->vram[i] != b->vram[i]) {
-        fprintf(stderr, "0x%.6X: %.4X != %.4X (%.4X)\n", (int)i, b->vram[i], a->vram[i], prev->vram[i]);
-        g_fail = true;
-        if (++j >= 32)
-          break;
-      }
-    }
-  }
-  if (memcmp(b->oam, a->oam, sizeof(uint16) * 0x120)) {
-    fprintf(stderr, "@%d: VRAM OAM compare failed (mine != theirs, prev):\n", snes_frame_counter);
-    for (size_t i = 0, j = 0; i < 0x120; i++) {
-      if (a->oam[i] != b->oam[i]) {
-        fprintf(stderr, "0x%.6X: %.4X != %.4X (%.4X)\n", (int)i, b->oam[i], a->oam[i], prev->oam[i]);
-        g_fail = true;
-        if (++j >= 16)
-          break;
-      }
-    }
-  }
-
+  CompareWordRegion("VRAM", b->vram, a->vram, prev->vram, 0x8000, 32);
+  CompareWordRegion("VRAM OAM", b->oam, a->oam, prev->oam, 0x120, 16);
 #endif
 }
 
@@ -689,6 +675,12 @@ void PatchBytes(uint32 addr, const uint8 *value, size_t n) {
     SnesRomPtr(addr)[i] = value[i];
 }
 
+typedef struct RomPatch {
+  uint32 addr;
+  const uint8 *data;
+  size_t size;
+} RomPatch;
+
 // Patches add/sub to ignore carry
 void FixupCarry(uint32 addr) {
   *SnesRomPtr(addr) = 0;
@@ -724,175 +716,181 @@ Snes *SnesInit(const char *filename) {
   coroutine_state_0 = 1;
 
 #if 1
-  { uint8 t[3] = { 0x20, 0x0f, 0xf7 }; PatchBytes(0x82896b, t, 3); }
-  { uint8 t[3] = { 0x7c, 0x81, 0x89 }; PatchBytes(0x82F70F, t, 3); }
+  // Helper macro to reduce boilerplate in ROM patches
+  #define PATCH(addr, ...) { \
+    static const uint8 data[] = { __VA_ARGS__ }; \
+    PatchBytes(addr, data, sizeof(data)); \
+  }
+
+  PATCH(0x82896b, 0x20, 0x0f, 0xf7);
+  PATCH(0x82F70F, 0x7c, 0x81, 0x89);
 
   // Some code called by GameState_37_CeresGoesBoomWithSamus_ forgets to clear the M flag
-  { uint8 t[] = { 0x5f, 0xf7 }; PatchBytes(0x8BA362, t, sizeof(t)); }
-  { uint8 t[] = { 0xc2, 0x20, 0x4c, 0x67, 0xa3 }; PatchBytes(0x8BF760, t, sizeof(t)); }
-  //{ uint8 t[3] = { 0x60 }; PatchBytes(0x808028, t, 1); }  // Apu_UploadBank hangs
-  { uint8 t[2] = { 0x0a, 0x0a }; PatchBytes(0x8584B2, t, 2); }  // HandleMessageBoxInteraction has a loop
+  PATCH(0x8BA362, 0x5f, 0xf7);
+  PATCH(0x8BF760, 0xc2, 0x20, 0x4c, 0x67, 0xa3);
+  //PATCH(0x808028, 0x60);  // Apu_UploadBank hangs
+  PATCH(0x8584B2, 0x0a, 0x0a);  // HandleMessageBoxInteraction has a loop
 
   // LoadRoomPlmGfx passes bad value
-  { uint8 t[] = { 0xc0, 0x00, 0x00, 0xf0, 0x03, 0x20, 0x64, 0x87, 0x60}; PatchBytes(0x84efd3, t, sizeof(t)); }
-  { uint8 t[] = { 0xd3, 0xef }; PatchBytes(0x848243, t, sizeof(t)); }
+  PATCH(0x84efd3, 0xc0, 0x00, 0x00, 0xf0, 0x03, 0x20, 0x64, 0x87, 0x60);
+  PATCH(0x848243, 0xd3, 0xef);
 
   // EprojColl_8676 doesn't initialize Y
-  { uint8 t[] = { 0xac, 0x91, 0x19, 0x4c, 0x76, 0x86 }; PatchBytes(0x86f4a6, t, sizeof(t)); }
-  { uint8 t[] = { 0xa6, 0xf4 }; PatchBytes(0x8685bd, t, sizeof(t)); }
+  PATCH(0x86f4a6, 0xac, 0x91, 0x19, 0x4c, 0x76, 0x86);
+  PATCH(0x8685bd, 0xa6, 0xf4);
 
   // Fix so main code is in a function.
-  { uint8 t[] = { 0xc2, 0x30, 0x22, 0x59, 0x94, 0x80, 0x20, 0x48, 0x89, 0x22, 0x38, 0x83, 0x80, 0x4C, 0x13, 0xF7 }; PatchBytes(0x82f713, t, sizeof(t)); }
-  { uint8 t[] = { 0x58, 0x4c, 0x13, 0xf7 }; PatchBytes(0x828944, t, sizeof(t)); }
-  { uint8 t[] = { 0x28, 0x60 }; PatchBytes(0x82897a, t, sizeof(t)); }
+  PATCH(0x82f713, 0xc2, 0x30, 0x22, 0x59, 0x94, 0x80, 0x20, 0x48, 0x89, 0x22, 0x38, 0x83, 0x80, 0x4C, 0x13, 0xF7);
+  PATCH(0x828944, 0x58, 0x4c, 0x13, 0xf7);
+  PATCH(0x82897a, 0x28, 0x60);
 
   // Remove IO_HVBJOY loop in ReadJoypadInput
-  { uint8 t[] = { 0x18, 0x18, 0x18, 0x18, 0x18, 0x18, 0x18 }; PatchBytes(0x80945C, t, sizeof(t)); }
+  PATCH(0x80945C, 0x18, 0x18, 0x18, 0x18, 0x18, 0x18, 0x18);
 
   // Fix so NorfairLavaMan_Func_12 initializes Y
-  { uint8 t[] = { 0xbc, 0xaa, 0x0f, 0xc9, 0x6c, 0x00, 0x10, 0x1a }; PatchBytes(0xa8b237, t, sizeof(t)); }
+  PATCH(0xa8b237, 0xbc, 0xaa, 0x0f, 0xc9, 0x6c, 0x00, 0x10, 0x1a);
 
   // MaridiaBeybladeTurtle_Func8 negate
-  { uint8 t[] = { 0x49, 0xff, 0xff, 0x69, 0x00, 0x00 }; PatchBytes(0xa2904b, t, sizeof(t)); }
-  { uint8 t[] = { 0x49, 0xff, 0xff, 0x69, 0x00, 0x00 }; PatchBytes(0xa29065, t, sizeof(t)); }
+  PATCH(0xa2904b, 0x49, 0xff, 0xff, 0x69, 0x00, 0x00);
+  PATCH(0xa29065, 0x49, 0xff, 0xff, 0x69, 0x00, 0x00);
 
   // Remove DebugLoadEnemySetData
-  { uint8 t[] = { 0x6b }; PatchBytes(0xA0896F, t, sizeof(t)); }
+  PATCH(0xA0896F, 0x6b);
   // MotherBrainsTubesFalling_Falling wrong X value
-  { uint8 t[] = { 0x18, 0x18, 0x18 }; PatchBytes(0xA98C12, t, sizeof(t)); }
+  PATCH(0xA98C12, 0x18, 0x18, 0x18);
 
-  { uint8 t[] = { 0x60 }; PatchBytes(0x8085F6, t, sizeof(t)); }
+  PATCH(0x8085F6, 0x60);
 
   // Remove 4 frames of delay in reset routine
-  { uint8 t[] = { 0x18, 0x18, 0x18, 0x18, 0x18, 0x18, 0x18, 0x18, 0x18, 0x18 }; PatchBytes(0x80843C, t, sizeof(t)); }
-  { uint8 t[] = { 0x18, 0x18, 0x18, 0x18, 0x18, 0x18, 0x18, 0x18, 0x18, 0x18 }; PatchBytes(0x808475, t, sizeof(t)); }
-  { uint8 t[] = { 0x18, 0x18, 0x18, 0x18, 0x18, 0x18, 0x18, 0x18, 0x18, 0x18 }; PatchBytes(0x808525, t, sizeof(t)); }
+  PATCH(0x80843C, 0x18, 0x18, 0x18, 0x18, 0x18, 0x18, 0x18, 0x18, 0x18, 0x18);
+  PATCH(0x808475, 0x18, 0x18, 0x18, 0x18, 0x18, 0x18, 0x18, 0x18, 0x18, 0x18);
+  PATCH(0x808525, 0x18, 0x18, 0x18, 0x18, 0x18, 0x18, 0x18, 0x18, 0x18, 0x18);
 
   // Remove WaitUntilEndOfVblank in WaitUntilEndOfVblankAndClearHdma - We run frame by frame.
-  { uint8 t[] = { 0x18, 0x18, 0x18, 0x18 }; PatchBytes(0x8882A1, t, sizeof(t)); }
+  PATCH(0x8882A1, 0x18, 0x18, 0x18, 0x18);
 
   // Remove WaitForNMI in GameState_41_TransitionToDemo.
-  { uint8 t[] = { 0x18, 0x18, 0x18, 0x18 }; PatchBytes(0x828533, t, sizeof(t)); }
+  PATCH(0x828533, 0x18, 0x18, 0x18, 0x18);
 
   // WaitForNMI in ScreenOfWaitNmi / ScreenOnWaitNMI
-  { uint8 t[] = { 0x18, 0x18, 0x18, 0x18 }; PatchBytes(0x80837B, t, sizeof(t)); }
-  { uint8 t[] = { 0x18, 0x18, 0x18, 0x18 }; PatchBytes(0x80838E, t, sizeof(t)); }
+  PATCH(0x80837B, 0x18, 0x18, 0x18, 0x18);
+  PATCH(0x80838E, 0x18, 0x18, 0x18, 0x18);
 
   // WaitUntilEndOfVblankAndEnableIrq
-  { uint8 t[] = { 0x18, 0x18, 0x18, 0x18 }; PatchBytes(0x82DF6C, t, sizeof(t)); }
+  PATCH(0x82DF6C, 0x18, 0x18, 0x18, 0x18);
 
   // Remove loops based on door_transition_vram_update_enabled
   // Replace with a call to Irq_DoorTransitionVramUpdate
-  { uint8 t[] = { 0x20, 0x32, 0x96, 0x6b }; PatchBytes(0x80d000, t, sizeof(t)); }
-  { uint8 t[] = { 0x22, 0x00, 0xd0, 0x80, 0x18 }; PatchBytes(0x82E02C, t, sizeof(t)); }
-  { uint8 t[] = { 0x22, 0x00, 0xd0, 0x80, 0x18 }; PatchBytes(0x82E06B, t, sizeof(t)); }
-  { uint8 t[] = { 0x22, 0x00, 0xd0, 0x80, 0x18 }; PatchBytes(0x82E50D, t, sizeof(t)); }
-  { uint8 t[] = { 0x22, 0x00, 0xd0, 0x80, 0x18 }; PatchBytes(0x82E609, t, sizeof(t)); }
+  PATCH(0x80d000, 0x20, 0x32, 0x96, 0x6b);
+  PATCH(0x82E02C, 0x22, 0x00, 0xd0, 0x80, 0x18);
+  PATCH(0x82E06B, 0x22, 0x00, 0xd0, 0x80, 0x18);
+  PATCH(0x82E50D, 0x22, 0x00, 0xd0, 0x80, 0x18);
+  PATCH(0x82E609, 0x22, 0x00, 0xd0, 0x80, 0x18);
 
   // Remove infinite loop polling door_transition_flag (AD 31 09 10 FB)
-  { uint8 t[] = { 0x22, 0x04, 0xd0, 0x80, 0x18 }; PatchBytes(0x82E526, t, sizeof(t)); }
-  { uint8 t[] = { 0x22, 0x38, 0x83, 0x80, 0xad, 0x31, 0x09, 0x10, 0xf7, 0x6b }; PatchBytes(0x80d004, t, sizeof(t)); }
+  PATCH(0x82E526, 0x22, 0x04, 0xd0, 0x80, 0x18);
+  PATCH(0x80d004, 0x22, 0x38, 0x83, 0x80, 0xad, 0x31, 0x09, 0x10, 0xf7, 0x6b);
 
   // Remove WaitForNMI in DoorTransitionFunction_LoadMoreThings_Async
-  { uint8 t[] = { 0x18, 0x18, 0x18, 0x18 }; PatchBytes(0x82E540, t, sizeof(t)); }
+  PATCH(0x82E540, 0x18, 0x18, 0x18, 0x18);
 
   // Remove WaitForNMI in CinematicFunctionBlackoutFromCeres
-  { uint8 t[] = { 0x18, 0x18, 0x18, 0x18 }; PatchBytes(0x8BC11E, t, sizeof(t)); }
+  PATCH(0x8BC11E, 0x18, 0x18, 0x18, 0x18);
 
   // Remove WaitForNMI in CinematicFunctionEscapeFromCeres
-  { uint8 t[] = { 0x18, 0x18, 0x18, 0x18 }; PatchBytes(0x8BD487, t, sizeof(t)); }
+  PATCH(0x8BD487, 0x18, 0x18, 0x18, 0x18);
 
   // Patch InitializePpuForMessageBoxes
-  { uint8 t[] = { 0x18, 0x18, 0x18 }; PatchBytes(0x858148, t, sizeof(t)); } // WaitForLagFrame
-  { uint8 t[] = { 0x18, 0x18, 0x18 }; PatchBytes(0x8581b2, t, sizeof(t)); } // WaitForLagFrame
-  { uint8 t[] = { 0x18, 0x18, 0x18, 0x18, 0x18, 0x18, 0x18, 0x18 }; PatchBytes(0x8581EA, t, sizeof(t)); } // HandleMusicQueue etc
+  PATCH(0x858148, 0x18, 0x18, 0x18);  // WaitForLagFrame
+  PATCH(0x8581b2, 0x18, 0x18, 0x18);  // WaitForLagFrame
+  PATCH(0x8581EA, 0x18, 0x18, 0x18, 0x18, 0x18, 0x18, 0x18, 0x18);  // HandleMusicQueue etc
 
   // Patch ClearMessageBoxBg3Tilemap
-  { uint8 t[] = { 0x18, 0x18, 0x18 }; PatchBytes(0x858203, t, sizeof(t)); } // WaitForLagFrame
-  { uint8 t[] = { 0x18, 0x18, 0x18, 0x18, 0x18, 0x18, 0x18, 0x18 }; PatchBytes(0x858236, t, sizeof(t)); } // HandleMusicQueue etc
+  PATCH(0x858203, 0x18, 0x18, 0x18);  // WaitForLagFrame
+  PATCH(0x858236, 0x18, 0x18, 0x18, 0x18, 0x18, 0x18, 0x18, 0x18);  // HandleMusicQueue etc
 
   // Patch WriteMessageTilemap
-  { uint8 t[] = { 0x18, 0x18, 0x18, 0x18, 0x18, 0x18, 0x18, 0x18, 0x18, 0x18, 0x18 }; PatchBytes(0x8582B8, t, sizeof(t)); }
+  PATCH(0x8582B8, 0x18, 0x18, 0x18, 0x18, 0x18, 0x18, 0x18, 0x18, 0x18, 0x18, 0x18);
 
   // Patch SetupPpuForActiveMessageBox
-  { uint8 t[] = { 0x18, 0x18, 0x18 }; PatchBytes(0x858321, t, sizeof(t)); } // WaitForLagFrame
-  { uint8 t[] = { 0x18, 0x18, 0x18, 0x18, 0x18, 0x18, 0x18, 0x18 }; PatchBytes(0x85835A, t, sizeof(t)); } // InitializePpuForMessageBoxes
+  PATCH(0x858321, 0x18, 0x18, 0x18);  // WaitForLagFrame
+  PATCH(0x85835A, 0x18, 0x18, 0x18, 0x18, 0x18, 0x18, 0x18, 0x18);  // InitializePpuForMessageBoxes
 
   // Patch ToggleSaveConfirmationSelection
-  { uint8 t[] = { 0x18, 0x18, 0x18 }; PatchBytes(0x858532, t, sizeof(t)); } // WaitForNMI_NoUpdate
-  { uint8 t[] = { 0x18, 0x18, 0x18, 0x18, 0x18, 0x18, 0x18, 0x18 }; PatchBytes(0x85856b, t, sizeof(t)); } // HandleMusicQueue etc.
+  PATCH(0x858532, 0x18, 0x18, 0x18);  // WaitForNMI_NoUpdate
+  PATCH(0x85856b, 0x18, 0x18, 0x18, 0x18, 0x18, 0x18, 0x18, 0x18);  // HandleMusicQueue etc.
 
   // Patch DisplayMessageBox
-  { uint8 t[] = { 0x18, 0x18, 0x18 }; PatchBytes(0x858096, t, sizeof(t)); } // Remove MsgBoxDelayFrames_2
-  { uint8 t[] = { 0x18, 0x18, 0x18 }; PatchBytes(0x8580B4, t, sizeof(t)); } // Remove MsgBoxDelayFrames_2
-  { uint8 t[] = { 0x18, 0x18, 0x18 }; PatchBytes(0x8580DC, t, sizeof(t)); } // Remove MsgBoxDelayFrames_2
-  { uint8 t[] = { 0x18, 0x18, 0x18 }; PatchBytes(0x8580F2, t, sizeof(t)); } // Remove MsgBoxDelayFrames_2
+  PATCH(0x858096, 0x18, 0x18, 0x18);  // Remove MsgBoxDelayFrames_2
+  PATCH(0x8580B4, 0x18, 0x18, 0x18);  // Remove MsgBoxDelayFrames_2
+  PATCH(0x8580DC, 0x18, 0x18, 0x18);  // Remove MsgBoxDelayFrames_2
+  PATCH(0x8580F2, 0x18, 0x18, 0x18);  // Remove MsgBoxDelayFrames_2
 
   // Patch RestorePpuForMessageBox
-  { uint8 t[] = { 0x18, 0x18, 0x18 }; PatchBytes(0x85861C, t, sizeof(t)); } // WaitForNMI_NoUpdate
-  { uint8 t[] = { 0x18, 0x18, 0x18 }; PatchBytes(0x858651, t, sizeof(t)); } // WaitForNMI_NoUpdate
-  { uint8 t[] = { 0x18, 0x18, 0x18, 0x18 }; PatchBytes(0x858692, t, sizeof(t)); } // HdmaObjectHandler
-  { uint8 t[] = { 0x18, 0x18, 0x18, 0x18 }; PatchBytes(0x858696, t, sizeof(t)); } // HandleSoundEffects
+  PATCH(0x85861C, 0x18, 0x18, 0x18);  // WaitForNMI_NoUpdate
+  PATCH(0x858651, 0x18, 0x18, 0x18);  // WaitForNMI_NoUpdate
+  PATCH(0x858692, 0x18, 0x18, 0x18, 0x18);  // HdmaObjectHandler
+  PATCH(0x858696, 0x18, 0x18, 0x18, 0x18);  // HandleSoundEffects
 
   // Patch Fix_MsgBoxMakeHdmaTable_NoSleep
-  { uint8 t[] = { 0x08, 0xc2, 0x30, 0x4c, 0xa9, 0x85 }; PatchBytes(0x859660, t, sizeof(t)); }
-  { uint8 t[] = { 0x20, 0x60, 0x96 }; PatchBytes(0x8583BA, t, sizeof(t)); } // MsgBoxMakeHdmaTable
+  PATCH(0x859660, 0x08, 0xc2, 0x30, 0x4c, 0xa9, 0x85);
+  PATCH(0x8583BA, 0x20, 0x60, 0x96);  // MsgBoxMakeHdmaTable
 
   // Patch GunshipTop_13 to not block
-  { uint8 t[] = { 0x22, 0x81, 0x96, 0x85, 0xc9, 0xff, 0xff, 0xd0, 0x04, 0x5c, 0x5f, 0xab, 0xa2, 0x5c, 0x26, 0xab, 0xa2 }; PatchBytes(0x859670, t, sizeof(t)); } // DisplayMessageBox_DoubleRet
-  { uint8 t[] = { 0xcd, 0x1f, 0x1c, 0xd0, 0x08, 0x9c, 0x1f, 0x1c, 0xad, 0xf9, 0x05, 0x6b, 0xff, 0x8d, 0xc8, 0x0d, 0xa9, 0xff, 0xff, 0x6b }; PatchBytes(0x859681, t, sizeof(t)); } // DisplayMessageBox_Poll
-  { uint8 t[] = { 0x5c, 0x70, 0x96, 0x85 }; PatchBytes(0xa2ab22, t, sizeof(t)); } // GunshipTop_13
+  PATCH(0x859670, 0x22, 0x81, 0x96, 0x85, 0xc9, 0xff, 0xff, 0xd0, 0x04, 0x5c, 0x5f, 0xab, 0xa2, 0x5c, 0x26, 0xab, 0xa2);  // DisplayMessageBox_DoubleRet
+  PATCH(0x859681, 0xcd, 0x1f, 0x1c, 0xd0, 0x08, 0x9c, 0x1f, 0x1c, 0xad, 0xf9, 0x05, 0x6b, 0xff, 0x8d, 0xc8, 0x0d, 0xa9, 0xff, 0xff, 0x6b);  // DisplayMessageBox_Poll
+  PATCH(0xa2ab22, 0x5c, 0x70, 0x96, 0x85);  // GunshipTop_13
 
   // EnemyMain_WithCheckMsgBox
-  { uint8 t[] = { 0x22, 0xd4, 0x8f, 0xa0, 0xad, 0xc8, 0x0d, 0xf0, 0x07, 0x22, 0x95, 0x96, 0x85, 0x9c, 0xc8, 0x0d, 0x6b }; PatchBytes(0x8596a0, t, sizeof(t)); }
-  { uint8 t[] = { 0x22, 0xa0, 0x96, 0x85 }; PatchBytes(0x828b65, t, sizeof(t)); } // EnemyMain -> EnemyMain_WithCheckMsgBox
+  PATCH(0x8596a0, 0x22, 0xd4, 0x8f, 0xa0, 0xad, 0xc8, 0x0d, 0xf0, 0x07, 0x22, 0x95, 0x96, 0x85, 0x9c, 0xc8, 0x0d, 0x6b);
+  PATCH(0x828b65, 0x22, 0xa0, 0x96, 0x85);  // EnemyMain -> EnemyMain_WithCheckMsgBox
 
   // CloseMessageBox_ResetMsgBoxIdx
-  { uint8 t[] = { 0x20, 0x89, 0x85, 0xa9, 0x1c, 0x00, 0x8d, 0x1f, 0x1c, 0x60 }; PatchBytes(0x8596C0, t, sizeof(t)); }
-  { uint8 t[] = { 0x20, 0xC0, 0x96 }; PatchBytes(0x8580E5, t, sizeof(t)); }
+  PATCH(0x8596C0, 0x20, 0x89, 0x85, 0xa9, 0x1c, 0x00, 0x8d, 0x1f, 0x1c, 0x60);
+  PATCH(0x8580E5, 0x20, 0xC0, 0x96);
 
   // ProcessPlm_CheckMessage
-  { uint8 t[] = { 0xad, 0xc8, 0x0d, 0xf0, 0x11, 0x98, 0x9d, 0x27, 0x1d, 0xad, 0xc8, 0x0d, 0x22, 0x95, 0x96, 0x85, 0x9c, 0xc8, 0x0d, 0xbc, 0x27, 0x1d, 0x4c, 0xee, 0x85 }; PatchBytes(0x84EFDC, t, sizeof(t)); }
-  { uint8 t[] = { 0xf4, 0xdb, 0xef }; PatchBytes(0x8485f7, t, sizeof(t)); }
+  PATCH(0x84EFDC, 0xad, 0xc8, 0x0d, 0xf0, 0x11, 0x98, 0x9d, 0x27, 0x1d, 0xad, 0xc8, 0x0d, 0x22, 0x95, 0x96, 0x85, 0x9c, 0xc8, 0x0d, 0xbc, 0x27, 0x1d, 0x4c, 0xee, 0x85);
+  PATCH(0x8485f7, 0xf4, 0xdb, 0xef);
 
   // Hook DisplayMessageBox so it writes to queued_message_box_index instead
-  { uint8 t[] = { 0x08, 0x8b, 0xda, 0x5a, 0x5c, 0x84, 0x80, 0x85 }; PatchBytes(0x859695, t, sizeof(t)); } // DisplayMessageBox_Org
-  { uint8 t[] = { 0x8d, 0xc8, 0x0d, 0x6b }; PatchBytes(0x858080, t, sizeof(t)); } // Hook
+  PATCH(0x859695, 0x08, 0x8b, 0xda, 0x5a, 0x5c, 0x84, 0x80, 0x85);  // DisplayMessageBox_Org
+  PATCH(0x858080, 0x8d, 0xc8, 0x0d, 0x6b);  // Hook
 
   // PlmInstr_ActivateSaveStationAndGotoIfNo_Fixed
-  { uint8 t[] = { 0x22, 0x81, 0x96, 0x85, 0xc9, 0xff, 0xff, 0xf0, 0x04, 0x5c, 0xfa, 0x8c, 0x84, 0x7a, 0xfa, 0x88, 0x88, 0x60 }; PatchBytes(0x84f000, t, sizeof(t)); } // Restart if -1
-  { uint8 t[] = { 0x5c, 0x00, 0xf0, 0x84 }; PatchBytes(0x848cf6, t, sizeof(t)); } // PlmInstr_ActivateSaveStationAndGotoIfNo
+  PATCH(0x84f000, 0x22, 0x81, 0x96, 0x85, 0xc9, 0xff, 0xff, 0xf0, 0x04, 0x5c, 0xfa, 0x8c, 0x84, 0x7a, 0xfa, 0x88, 0x88, 0x60);  // Restart if -1
+  PATCH(0x848cf6, 0x5c, 0x00, 0xf0, 0x84);  // PlmInstr_ActivateSaveStationAndGotoIfNo
 
   // SoftReset
-  { uint8 t[] = { 0xa9, 0xff, 0xff, 0x8d, 0x98, 0x09, 0x60 }; PatchBytes(0x81F000, t, sizeof(t)); }
-  { uint8 t[] = { 0x5c, 0x00, 0xf0, 0x81 }; PatchBytes(0x819027, t, sizeof(t)); }
-  { uint8 t[] = { 0x5c, 0x00, 0xf0, 0x81 }; PatchBytes(0x819112, t, sizeof(t)); }
-  { uint8 t[] = { 0x5c, 0x00, 0xf0, 0x81 }; PatchBytes(0x8194e9, t, sizeof(t)); }
+  PATCH(0x81F000, 0xa9, 0xff, 0xff, 0x8d, 0x98, 0x09, 0x60);
+  PATCH(0x819027, 0x5c, 0x00, 0xf0, 0x81);
+  PATCH(0x819112, 0x5c, 0x00, 0xf0, 0x81);
+  PATCH(0x8194e9, 0x5c, 0x00, 0xf0, 0x81);
 
   // Remove ReadJoypadInputs from Vector_NMI
-  { uint8 t[] = { 0x18, 0x18, 0x18, 0x18 }; PatchBytes(0x8095E1, t, sizeof(t)); } // callf   ReadJoypadInputs
+  PATCH(0x8095E1, 0x18, 0x18, 0x18, 0x18);  // callf   ReadJoypadInputs
 
   // Remove APU_UploadBank
   if (g_use_my_apu_code)
-    { uint8 t[] = { 0x60 }; PatchBytes(0x808028, t, sizeof(t)); }
+    PATCH(0x808028, 0x60);
 
   // Remove reads from IO_APUI01 etc
-  { uint8 t[] = { 0x18, 0x18, 0x18, 0x80 }; PatchBytes(0x828A59, t, sizeof(t)); } // SfxHandlers_1_WaitForAck
-  { uint8 t[] = { 0x18, 0x18, 0x18 }; PatchBytes(0x828A72, t, sizeof(t)); } // SfxHandlers_2_ClearRequest
-  { uint8 t[] = { 0x18, 0x18, 0x18, 0x80 }; PatchBytes(0x828A80, t, sizeof(t)); } // SfxHandlers_3_WaitForAck
-  { uint8 t[] = { 0x06 }; PatchBytes(0x828A67, t, sizeof(t)); } // sfx_clear_delay
+  PATCH(0x828A59, 0x18, 0x18, 0x18, 0x80);  // SfxHandlers_1_WaitForAck
+  PATCH(0x828A72, 0x18, 0x18, 0x18);  // SfxHandlers_2_ClearRequest
+  PATCH(0x828A80, 0x18, 0x18, 0x18, 0x80);  // SfxHandlers_3_WaitForAck
+  PATCH(0x828A67, 0x06);  // sfx_clear_delay
 
   // LoadStdBG3andSpriteTilesClearTilemaps does DMA from RAM
-  { uint8 t[] = { 0x00, 0x2E }; PatchBytes(0x82831E, t, sizeof(t)); }
+  PATCH(0x82831E, 0x00, 0x2E);
 
-  { uint8 t[] = { 0xa5, 0x25 }; PatchBytes(0x91C234, t, sizeof(t)); } // Bugfix in XrayHdmaFunc_BeamAimedUUL
+  PATCH(0x91C234, 0xa5, 0x25);  // Bugfix in XrayHdmaFunc_BeamAimedUUL
 
   // Remove call to InitializeMiniMapBroken
-  { uint8 t[] = { 0x18, 0x18, 0x18, 0x18 }; PatchBytes(0x809AF3, t, sizeof(t)); } // callf   InitializeMiniMapBroken
+  PATCH(0x809AF3, 0x18, 0x18, 0x18, 0x18);  // callf   InitializeMiniMapBroken
 
   // NormalEnemyShotAiSkipDeathAnim_CurEnemy version that preserves R18 etc.
-  { uint8 t[] = { 0xA5, 0x12, 0x48, 0xA5, 0x14, 0x48, 0xA5, 0x16, 0x48, 0x22, 0xA7, 0xA6, 0xA0, 0x68, 0x85, 0x16, 0x68, 0x85, 0x14, 0x68, 0x85, 0x12, 0x6B }; PatchBytes(0xA7FF82, t, sizeof(t)); }
-  { uint8 t[] = { 0x22, 0x82, 0xff, 0xa7 }; PatchBytes(0xa7b03a, t, sizeof(t)); }
+  PATCH(0xA7FF82, 0xA5, 0x12, 0x48, 0xA5, 0x14, 0x48, 0xA5, 0x16, 0x48, 0x22, 0xA7, 0xA6, 0xA0, 0x68, 0x85, 0x16, 0x68, 0x85, 0x14, 0x68, 0x85, 0x12, 0x6B);
+  PATCH(0xa7b03a, 0x22, 0x82, 0xff, 0xa7);
 
   RtlUpdateSnesPatchForBugfix();
 
@@ -907,6 +905,7 @@ Snes *SnesInit(const char *filename) {
   }
 
   PatchBugs(1, 0);
+  #undef PATCH  // Clean up PATCH macro
 #endif
   return g_snes;
 }
@@ -956,12 +955,12 @@ void DrawFrameToPpu(void) {
 }
 
 void SaveBugSnapshot() {
-  if (!g_debug_flag && g_got_mismatch_count == 0) {
+  if (!g_game_ctx.emulator_debug_flag && g_game_ctx.got_mismatch_count == 0) {
     char buffer[64];
     snprintf(buffer, sizeof(buffer), "saves/bug-%d.sav", (int)time(NULL));
     RtlSaveSnapshot(buffer, true);
   }
-  g_got_mismatch_count = 5 * 60;
+  g_game_ctx.got_mismatch_count = kBugCountdownFrames;
 }
 
 void RunOneFrameOfGame_Both(void) {
@@ -998,7 +997,7 @@ again_theirs:
     g_snes->ppu = g_snes->snes_ppu;
     RestoreSnapshot(&g_snapshot_before);
 
-    if (g_debug_flag)
+    if (g_game_ctx.emulator_debug_flag)
       goto again_theirs;
 
     SaveBugSnapshot();
@@ -1009,7 +1008,7 @@ again_theirs:
   g_snes->ppu = g_snes->snes_ppu;
   RestoreSnapshot(&g_snapshot_theirs);
 getout:
-  g_snes->ppu = g_other_image ? g_snes->my_ppu : g_snes->snes_ppu;
+  g_snes->ppu = g_game_ctx.other_image ? g_snes->my_ppu : g_snes->snes_ppu;
   g_snes->runningWhichVersion = 0;
 
   // Trigger soft reset?
@@ -1026,8 +1025,8 @@ getout:
   }
 
 
-  if (g_got_mismatch_count)
-    g_got_mismatch_count--;
+  if (g_game_ctx.got_mismatch_count)
+    g_game_ctx.got_mismatch_count--;
 }
 
 static const char *kAreaNames[] = { "Crateria", "Brinstar", "Norfair", "WreckedShip", "Maridia", "Tourian", "Ceres", "Debug" };

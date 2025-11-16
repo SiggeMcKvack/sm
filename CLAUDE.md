@@ -8,6 +8,26 @@ This is a decompilation/reverse engineering project of Super Metroid (SNES). The
 
 **Required ROM**: `sm.smc` (SHA1: da957f0d63d14cb441d215462904c4fa8519c613) must be placed in the root directory.
 
+## Recent Code Quality Improvements (2025)
+
+**Critical bugs fixed:**
+- Duplicate global variable declarations (main.c) - eliminated undefined behavior
+- Race condition in audio callback - fixed recursive mutex locking deadlock
+- Memory leaks in config parser - proper cleanup on nested !include directives
+- Buffer overflow protection - validated aspect ratio bounds
+- Malloc/realloc null checks - added safety checks at 6 critical locations
+
+**Code quality improvements:**
+- Replaced magic numbers with named constants (frame delays, thresholds, limits)
+- Created PATCH() macro for ROM patches - reduced boilerplate significantly
+- Fixed signed/unsigned comparison bugs in gamepad input
+- Decomposed main() function - reduced from 590 to ~50 lines by extracting 5 focused functions (InitializeContexts, SetupWindowAndRenderer, SetupAudio, RunGameLoop, Cleanup)
+- Refactored VerifySnapshotsEq() - reduced from 121 to 63 lines by extracting DRY helpers (CompareByteRegion, CompareWordRegion)
+- Created error handling abstractions - added xmalloc/xrealloc wrappers, migrated 7 allocation sites
+- Implemented logging framework - LOG_ERROR/WARN/INFO/DEBUG levels with TTY color support, environment configuration (SM_LOG_LEVEL), and platform abstraction
+
+**See `TODO_CODE_QUALITY.md` for remaining refactoring opportunities.**
+
 ## Build Commands
 
 ### Standard Build (Linux/macOS)

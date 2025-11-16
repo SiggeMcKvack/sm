@@ -2,6 +2,20 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdarg.h>
+#include <stdlib.h>
+
+// Error-checked memory allocation (dies on failure)
+void *xmalloc(size_t size) {
+  void *ptr = malloc(size);
+  if (!ptr) Die("memory allocation failed");
+  return ptr;
+}
+
+void *xrealloc(void *ptr, size_t size) {
+  void *new_ptr = realloc(ptr, size);
+  if (!new_ptr) Die("memory reallocation failed");
+  return new_ptr;
+}
 
 char *NextDelim(char **s, int sep) {
   char *r = *s;
@@ -45,8 +59,7 @@ uint8 *ReadWholeFile(const char *name, size_t *length) {
   fseek(f, 0, SEEK_END);
   size_t size = ftell(f);
   rewind(f);
-  uint8 *buffer = (uint8 *)malloc(size + 1);
-  if (!buffer) Die("malloc failed");
+  uint8 *buffer = (uint8 *)xmalloc(size + 1);
   // Always zero terminate so this function can be used also for strings.
   buffer[size] = 0;
   if (fread(buffer, 1, size, f) != size)
@@ -99,7 +112,7 @@ char *ReplaceFilenameWithNewPath(const char *old_path, const char *new_path) {
   size_t nlen = strlen(new_path) + 1;
   while (olen && old_path[olen - 1] != '/' && old_path[olen - 1] != '\\')
     olen--;
-  char *result = (char *)malloc(olen + nlen);
+  char *result = (char *)xmalloc(olen + nlen);
   memcpy(result, old_path, olen);
   memcpy(result + olen, new_path, nlen);
   return result;
@@ -149,9 +162,7 @@ void ByteArray_Resize(ByteArray *arr, size_t new_size) {
   if (new_size > arr->capacity) {
     size_t minsize = arr->capacity + (arr->capacity >> 1) + 8;
     arr->capacity = new_size < minsize ? minsize : new_size;
-    uint8 *data = (uint8*)realloc(arr->data, arr->capacity);
-    if (!data) Die("memory allocation failed");
-    arr->data = data;
+    arr->data = (uint8*)xrealloc(arr->data, arr->capacity);
   }
 }
 

@@ -408,7 +408,7 @@ bool RtlRunFrame(int inputs) {
       inputs = state_recorder.last_inputs;
     } else {
       if (bug_fix_counter != kCurrentBugFixCounter) {
-        if (g_debug_flag)
+        if (g_game_ctx.emulator_debug_flag)
           printf("bug_fix_counter %d => %d\n", bug_fix_counter, kCurrentBugFixCounter);
         if (bug_fix_counter < kCurrentBugFixCounter) {
           bug_fix_counter = kCurrentBugFixCounter;
@@ -675,9 +675,8 @@ void RtlSaveMusicStateToRam_Locked(void) {
   }
 }
 
-void RtlRenderAudio(int16 *audio_buffer, int samples, int channels) {
+void RtlRenderAudio_Locked(int16 *audio_buffer, int samples, int channels) {
   assert(channels == 2);
-  RtlApuLock();
 
   RtlPopApuState_Locked();
 
@@ -691,7 +690,11 @@ void RtlRenderAudio(int16 *audio_buffer, int samples, int channels) {
     SpcPlayer_GenerateSamples(g_spc_player);
     dsp_getSamples(g_spc_player->dsp, audio_buffer, samples);
   }
+}
 
+void RtlRenderAudio(int16 *audio_buffer, int samples, int channels) {
+  RtlApuLock();
+  RtlRenderAudio_Locked(audio_buffer, samples, channels);
   RtlApuUnlock();
 }
 

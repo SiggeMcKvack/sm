@@ -11,6 +11,10 @@ enum {
   kKeyMod_Alt = 0x400,
   kKeyMod_Shift = 0x800,
   kKeyMod_Ctrl = 0x1000,
+  kMaxKeymapSize = 10000,
+  kKeymapGrowSize = 256,
+  kMaxJoypadMapSize = 1000,
+  kJoypadMapGrowSize = 64,
 };
 
 Config g_config;
@@ -76,9 +80,9 @@ static bool has_keynameid[countof(kKeyNameId)];
 
 static bool KeyMapHash_Add(uint16 key, uint16 cmd) {
   if ((keymap_hash_size & 0xff) == 0) {
-    if (keymap_hash_size > 10000)
+    if (keymap_hash_size > kMaxKeymapSize)
       Die("Too many keys");
-    keymap_hash = (KeyMapHashEnt*)realloc(keymap_hash, sizeof(KeyMapHashEnt) * (keymap_hash_size + 256));
+    keymap_hash = (KeyMapHashEnt*)xrealloc(keymap_hash, sizeof(KeyMapHashEnt) * (keymap_hash_size + kKeymapGrowSize));
   }
   int i = keymap_hash_size++;
   KeyMapHashEnt *ent = &keymap_hash[i];
@@ -170,10 +174,9 @@ static int CountBits32(uint32 n) {
 
 static void GamepadMap_Add(int button, uint32 modifiers, uint16 cmd) {
   if ((joymap_size & 0xff) == 0) {
-    if (joymap_size > 1000)
+    if (joymap_size > kMaxJoypadMapSize)
       Die("Too many joypad keys");
-    joymap_ents = (GamepadMapEnt*)realloc(joymap_ents, sizeof(GamepadMapEnt) * (joymap_size + 64));
-    if (!joymap_ents) Die("realloc failure");
+    joymap_ents = (GamepadMapEnt*)xrealloc(joymap_ents, sizeof(GamepadMapEnt) * (joymap_size + kJoypadMapGrowSize));
   }
   uint16 *p = &joymap_first[button];
   // Insert it as early as possible but before after any entry with more modifiers.
@@ -290,8 +293,14 @@ bool ParseBool(const char *value, bool *result) {
   case 'f': if (StringEqualsNoCase(value, "alse")) break; return false;
   case 'n': if (StringEqualsNoCase(value, "o")) break; return false;
   case 'o':
-    rv = (*value | 32) == 'n';
-    if (StringEqualsNoCase(value, rv ? "n" : "ff")) break;
+    if (StringEqualsNoCase(value, "n")) {
+      rv = true;
+      break;
+    }
+    if (StringEqualsNoCase(value, "ff")) {
+      rv = false;
+      break;
+    }
     return false;
   case '1': rv = true; if (*value == 0) break; return false;
   case 'y': rv = true; if (StringEqualsNoCase(value, "es")) break; return false;
@@ -407,7 +416,18 @@ static bool HandleIniConfig(int section, const char *key, char *value) {
       if (aspect_width > 0 && aspect_height > 0) {
         int height = g_config.extend_y ? 240 : 224;
         // Formula: (height * aspect_width / aspect_height - 256) / 2
-        g_config.extended_aspect_ratio = (uint8)((height * aspect_width / aspect_height - 256) / 2);
+        int calculated = (height * aspect_width / aspect_height - 256) / 2;
+        if (calculated < 0) {
+          fprintf(stderr, "Warning: Aspect ratio %d:%d is narrower than 4:3, using 4:3\n",
+                  aspect_width, aspect_height);
+          g_config.extended_aspect_ratio = 0;
+        } else if (calculated > 96) {
+          fprintf(stderr, "Warning: Aspect ratio %d:%d exceeds maximum (96 pixels/side), clamping\n",
+                  aspect_width, aspect_height);
+          g_config.extended_aspect_ratio = 96;
+        } else {
+          g_config.extended_aspect_ratio = (uint8)calculated;
+        }
       } else {
         // Default to 4:3 (no extension)
         g_config.extended_aspect_ratio = 0;
@@ -467,8 +487,12 @@ static bool ParseOneConfigFile(const char *filename, int depth) {
   char *filedata = (char*)ReadWholeFile(filename, NULL), *p;
   if (!filedata)
     return false;
-  
+
   int section = -2;
+  // Free previous memory buffer if exists (handles nested !include directives)
+  if (g_config.memory_buffer) {
+    free(g_config.memory_buffer);
+  }
   g_config.memory_buffer = filedata;
 
   for (int lineno = 1; (p = NextLineStripComments(&filedata)) != NULL; lineno++) {

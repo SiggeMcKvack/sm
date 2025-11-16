@@ -11,7 +11,7 @@ extern uint8 *g_sram;
 extern const uint8 *g_rom;
 extern bool g_use_my_apu_code;
 #define LONGPTR(t) {(t) & 0xffff, (t) >> 16}
-extern bool g_debug_flag;
+extern GameContext g_game_ctx;
 
 typedef void HandlerFunc(void);
 typedef uint8 Func_V_A(void);
@@ -113,6 +113,7 @@ void RtlApuLock();
 void RtlApuUnlock();
 void RtlApuUpload(const uint8 *p);
 void RtlRenderAudio(int16 *audio_buffer, int samples, int channels);
+void RtlRenderAudio_Locked(int16 *audio_buffer, int samples, int channels);
 void RtlPushApuState();
 bool RtlRunFrame(int inputs);
 void RtlReadSram();

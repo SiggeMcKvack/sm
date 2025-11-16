@@ -18,6 +18,10 @@ typedef struct ByteArray {
   size_t size, capacity;
 } ByteArray;
 
+// Error-checked memory allocation (dies on failure)
+void *xmalloc(size_t size);
+void *xrealloc(void *ptr, size_t size);
+
 void ByteArray_Resize(ByteArray *arr, size_t new_size);
 void ByteArray_Destroy(ByteArray *arr);
 void ByteArray_AppendData(ByteArray *arr, const uint8 *data, size_t data_size);
