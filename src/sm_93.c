@@ -192,6 +192,7 @@ void DrawPlayerExplosions2(void) {  // 0x938254
       Point16U pt = CalcExplosion_Mode7(v0);
       v3 = pt.y;
       r20 = pt.x;
+      r18 = v3;
     }
     if ((v3 & 0xFF00) == 0 && (projectile_spritemap_pointers[v1] & 0x8000) != 0) {
       DrawProjectileSpritemap(v0, r20, r18);

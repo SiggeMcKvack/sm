@@ -2483,7 +2483,7 @@ void EnemyBombCollHandler(void) {  // 0xA0A236
     return;
   for(int pidx = 5; pidx < 10; pidx++) {
     if (!projectile_type[pidx] || projectile_variables[pidx] ||
-        (projectile_type[pidx] & 0xF00) != 1280 && (projectile_type[pidx] & 0x8000) == 0)
+        ((projectile_type[pidx] & 0xF00) != 1280 && (projectile_type[pidx] & 0x8000) == 0))
       continue;
     if (abs16(projectile_x_pos[pidx] - E->x_pos) - projectile_x_radius[pidx] < E->x_width && 
         abs16(projectile_y_pos[pidx] - E->y_pos) - projectile_y_radius[pidx] < E->y_height) {
