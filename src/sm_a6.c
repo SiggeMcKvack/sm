@@ -3097,7 +3097,7 @@ void Ridley_Func_70(void) {  // 0xA6CAF5
   Ridley_Func_86();
   Ridley_Func_87();
   Enemy_Ridley *E = Get_Ridley(0);
-  if (!(E->ridley_var_1B | (uint16)(samus_invincibility_timer | E->base.properties & kEnemyProps_Tangible)))
+  if (!(E->ridley_var_1B | (uint16)(samus_invincibility_timer | (E->base.properties & kEnemyProps_Tangible))))
     Ridley_Func_127();
 }
 

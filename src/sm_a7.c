@@ -2960,7 +2960,7 @@ void Phantoon_WavyDyingPhantoonAndCry(uint16 k) {  // 0xA7DA51
   Get_Phantoon(k)->phant_var_F = FUNC16(Phantoon_DyingFadeOut);
   Phantoon = Get_Phantoon(0x40);
   Phantoon->phant_var_C = 2;
-  uint16 v2 = Get_Phantoon(0)->base.properties & ~(kEnemyProps_DisableSamusColl | kEnemyProps_Tangible | kEnemyProps_Invisible) | kEnemyProps_Tangible | kEnemyProps_Invisible;
+  uint16 v2 = (Get_Phantoon(0)->base.properties & ~(kEnemyProps_DisableSamusColl | kEnemyProps_Tangible | kEnemyProps_Invisible)) | kEnemyProps_Tangible | kEnemyProps_Invisible;
   Phantoon->base.properties = v2;
   Get_Phantoon(0x80)->base.properties = v2;
   Get_Phantoon(0xC0)->base.properties = v2;
