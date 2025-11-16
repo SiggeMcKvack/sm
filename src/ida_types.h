@@ -1244,10 +1244,10 @@ typedef struct Ram3000_Menu {
 
 /* 136 */
 typedef union Ram3800 {
-  uint16 cinematic_bg_tilemap[1024];
-  uint16 equipment_screen_bg1_tilemap[1024];
-  uint16 debug_game_over_tilemap[1024];
-  uint16 cleared_message_box_bg3_tilemap[1024];
+  uint16 cinematic_bg_tilemap[2048];
+  uint16 equipment_screen_bg1_tilemap[2048];
+  uint16 debug_game_over_tilemap[2048];
+  uint16 cleared_message_box_bg3_tilemap[2048];
 } Ram3800;
 
 /* 137 */
@@ -1295,8 +1295,8 @@ typedef struct ExtraEnemyRam8800 {
 
 /* 149 */
 typedef union Ram3000 {
-  uint16 pause_menu_map_tilemap[1024];
-  uint16 cinematic_bg_tilemap[1024];
+  uint16 pause_menu_map_tilemap[2048];
+  uint16 cinematic_bg_tilemap[2048];
   Ram3000_MsgBox msgbox;
   uint8 msgbox_y_scroll_hdma[240];
   Ram3000_Misc misc;
