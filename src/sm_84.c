@@ -80,7 +80,7 @@ void CalculatePlmBlockCoords(uint16 k) {  // 0x848290
 
 void WriteLevelDataBlockTypeAndBts(uint16 k, uint16 a) {  // 0x8482B4
   uint8 *v2 = &g_ram[0x10000 + k];
-  v2[3] = HIBYTE(a) | v2[3] & 0xF;
+  v2[3] = HIBYTE(a) | (v2[3] & 0xF);
   BTS[k >> 1] = a;
 }
 
@@ -603,7 +603,7 @@ const uint8 *PlmInstr_ProcessAirScrollUpdate(const uint8 *plmp, uint16 k) {  // 
     v5 += 2;
   }
   int v7 = plm_block_indices[k >> 1] >> 1;
-  level_data[v7] = level_data[v7] & 0xFFF | 0x3000;
+  level_data[v7] = (level_data[v7] & 0xFFF) | 0x3000;
   return plmp;
 }
 
@@ -617,7 +617,7 @@ const uint8 *PlmInstr_ProcessSolidScrollUpdate(const uint8 *plmp, uint16 k) {  /
     v5 += 2;
   }
   int v7 = plm_block_indices[k >> 1] >> 1;
-  level_data[v7] = level_data[v7] & 0xFFF | 0xB000;
+  level_data[v7] = (level_data[v7] & 0xFFF) | 0xB000;
   return plmp;
 }
 
@@ -844,7 +844,7 @@ LABEL_2:
             return;
         }
         r22 = r20 + r26 - r22;
-        if ((r22 & 0x8000) != 0 || (v23 = (int16)(r20 - r22) < 0, (r20 -= r22) != 0) && !v23) {
+        if ((r22 & 0x8000) != 0 || ((v23 = (int16)(r20 - r22) < 0, (r20 -= r22) != 0) && !v23)) {
           v35 = k;
           uint16 v24;
           v24 = vram_write_queue_tail;
@@ -966,7 +966,7 @@ LABEL_70:
             v10->size = v9;
             v10[2].size = v9;
             v10[0].vram_dst = a;
-            v10[1].vram_dst = a & 0xFFE0 ^ 0x400;
+            v10[1].vram_dst = (a & 0xFFE0) ^ 0x400;
             v10[3].vram_dst = v10[1].vram_dst + 32;
             v10[2].vram_dst = v10->vram_dst + 32;
             x = 4 * r20;
@@ -1188,7 +1188,7 @@ LABEL_7:
 uint8 PlmSetup_B6D3_MapStation(uint16 j) {  // 0x84B18B
   int v1 = j >> 1;
   int v2 = plm_block_indices[v1] >> 1;
-  level_data[v2] = level_data[v2] & 0xFFF | 0x8000;
+  level_data[v2] = (level_data[v2] & 0xFFF) | 0x8000;
   if (map_station_byte_array[area_index]) {
     plm_instr_list_ptrs[v1] = addr_word_84AD76;
   } else {

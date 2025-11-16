@@ -1427,18 +1427,18 @@ void ToggleHudItemHighlight(uint16 a, uint16 k) {  // 0x809CEA
   if (v2 >= 0) {
     int v3 = kHudItemTilemapOffsets[v2] >> 1;
     if (hud_tilemap[v3] != 11279)
-      hud_tilemap[v3] = hud_item_tilemap_palette_bits | hud_tilemap[v3] & 0xE3FF;
+      hud_tilemap[v3] = hud_item_tilemap_palette_bits | (hud_tilemap[v3] & 0xE3FF);
     if (hud_tilemap[v3 + 1] != 11279)
-      hud_tilemap[v3 + 1] = hud_item_tilemap_palette_bits | hud_tilemap[v3 + 1] & 0xE3FF;
+      hud_tilemap[v3 + 1] = hud_item_tilemap_palette_bits | (hud_tilemap[v3 + 1] & 0xE3FF);
     if (hud_tilemap[v3 + 32] != 11279)
-      hud_tilemap[v3 + 32] = hud_item_tilemap_palette_bits | hud_tilemap[v3 + 32] & 0xE3FF;
+      hud_tilemap[v3 + 32] = hud_item_tilemap_palette_bits | (hud_tilemap[v3 + 32] & 0xE3FF);
     if (hud_tilemap[v3 + 33] != 11279)
-      hud_tilemap[v3 + 33] = hud_item_tilemap_palette_bits | hud_tilemap[v3 + 33] & 0xE3FF;
-    if (!(2 * v2)) {
+      hud_tilemap[v3 + 33] = hud_item_tilemap_palette_bits | (hud_tilemap[v3 + 33] & 0xE3FF);
+    if ((2 * v2) == 0) {
       if (hud_tilemap[v3 + 2] != 11279)
-        hud_tilemap[v3 + 2] = hud_item_tilemap_palette_bits | hud_tilemap[v3 + 2] & 0xE3FF;
+        hud_tilemap[v3 + 2] = hud_item_tilemap_palette_bits | (hud_tilemap[v3 + 2] & 0xE3FF);
       if (hud_tilemap[v3 + 34] != 11279)
-        hud_tilemap[v3 + 34] = hud_item_tilemap_palette_bits | hud_tilemap[v3 + 34] & 0xE3FF;
+        hud_tilemap[v3 + 34] = hud_item_tilemap_palette_bits | (hud_tilemap[v3 + 34] & 0xE3FF);
     }
   }
 }
@@ -2036,8 +2036,8 @@ void HandleScrollingWhenTriggeringScrollDown(void) {  // 0x80A893
   uint16 v2 = swap16(room_height_in_scrolls - 1);
   uint16 var937 = var933 + v2;
   if ((uint16)(var933 + v2) < layer1_y_pos
-      || !scrolls[(uint16)(room_width_in_scrolls + r20)]
-      && (var937 = var933 + (layer1_y_pos & 0xFF00), var937 < layer1_y_pos)) {
+      || (!scrolls[(uint16)(room_width_in_scrolls + r20)]
+      && (var937 = var933 + (layer1_y_pos & 0xFF00), var937 < layer1_y_pos))) {
     uint16 v3 = var939 - absolute_moved_last_frame_y - 2;
     if ((int16)(v3 - var937) < 0)
       v3 = var937;

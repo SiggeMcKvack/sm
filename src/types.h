@@ -9,6 +9,7 @@
 
 #if defined(_WIN32) && !COMPILER_TCC
 #include <crtdbg.h>
+#undef assert
 #define assert _ASSERTE
 #else
 #include <assert.h>

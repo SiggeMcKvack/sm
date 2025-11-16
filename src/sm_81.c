@@ -87,8 +87,8 @@ uint8 LoadFromSram(uint16 a) {  // 0x818085
     v1 += 2;
   } while (v2 != plm_instruction_timer);
   int v4 = r18 >> 1;
-  if (r20 == kSramChecksum[v4] && (r20 ^ 0xffff) == kSramChecksumInverted[v4]
-      || r20 == kSramChecksumUpper[v4] && (r20 ^ 0xffff) == kSramChecksumInvertedUpper[v4]) {
+  if ((r20 == kSramChecksum[v4] && (r20 ^ 0xffff) == kSramChecksumInverted[v4])
+      || (r20 == kSramChecksumUpper[v4] && (r20 ^ 0xffff) == kSramChecksumInvertedUpper[v4])) {
     for (int i = 94; i >= 0; i -= 2)
       *(uint16 *)((uint8 *)&equipped_items + i) = player_data_saved[i >> 1];
     UnpackMapFromSave();
@@ -155,7 +155,7 @@ void DrawSpritemap(uint8 db, uint16 j, uint16 x_r20, uint16 y_r18, uint16 chr_r2
       x = 0x180, y = 0xe0;
     oam->xcoord = x;
     oam->ycoord = y;
-    *(uint16 *)&oam->charnum = chr_r22 | GET_WORD(pp + 3) & 0xF1FF;
+    *(uint16 *)&oam->charnum = chr_r22 | (GET_WORD(pp + 3) & 0xF1FF);
     oam_ext[idx >> 5] |= (((x & 0x100) >> 8) | (*(int16 *)pp < 0) * 2) << (2 * ((idx >> 2) & 7));
     idx += 4;
     pp += 5;
@@ -177,7 +177,7 @@ void DrawSpritemapOffScreen(uint16 j, uint16 x_r20, uint16 y_r18, uint16 chr_r22
       x = 0x180, y = 0xe0;
     oam->xcoord = x;
     oam->ycoord = y;
-    *(uint16 *)&oam->charnum = chr_r22 | *(uint16 *)(pp + 3) & 0xF1FF;
+    *(uint16 *)&oam->charnum = chr_r22 | (*(uint16 *)(pp + 3) & 0xF1FF);
     oam_ext[idx >> 5] |= (((x & 0x100) >> 8) | (*(int16 *)pp < 0) * 2) << (2 * ((idx >> 2) & 7));
     idx += 4;
     pp += 5;
@@ -196,7 +196,7 @@ void DrawMenuSpritemap(uint16 a, uint16 k, uint16 j, uint16 chr_r3) {  // 0x8189
     oam->xcoord = x;
     oam_ext[idx >> 5] |= (((x & 0x100) >> 8) | (*(int16 *)pp < 0) * 2) << (2 * ((idx >> 2) & 7));
     oam->ycoord = j + pp[2];
-    *(uint16 *)&oam->charnum = chr_r3 | GET_WORD(pp + 3) & 0xF1FF;
+    *(uint16 *)&oam->charnum = chr_r3 | (GET_WORD(pp + 3) & 0xF1FF);
     pp += 5;
     idx = (idx + 4) & 0x1FF;
   }
@@ -709,7 +709,7 @@ void FileSelectMenu_5_FadeOutFromMain(void) {  // 0x8194EE
 
 void FileSelectMenu_15_FadeOutToMain(void) {  // 0x8194F4
   HandleFadeOut();
-  reg_MOSAIC = reg_MOSAIC & 0x0F | (16 * (reg_INIDISP & 0xF)) ^ 0xF0;
+  reg_MOSAIC = (reg_MOSAIC & 0x0F) | ((16 * (reg_INIDISP & 0xF)) ^ 0xF0);
   if ((reg_INIDISP & 0xF) == 0) {
     ScreenOff();
     ++menu_index;
@@ -735,7 +735,7 @@ void FileSelectMenu_17_FadeInToMain(void) {
 void FileSelectMenu_7_FadeInFromMain(void) {  // 0x819532
   DrawMenuSelectionMissile();
   HandleFadeIn();
-  reg_MOSAIC = reg_MOSAIC & 0x0F | (16 * (reg_INIDISP & 0xF)) ^ 0xF0;
+  reg_MOSAIC = (reg_MOSAIC & 0x0F) | ((16 * (reg_INIDISP & 0xF)) ^ 0xF0);
   if ((reg_INIDISP & 0xF) == 15)
     ++menu_index;
 }
@@ -1300,9 +1300,9 @@ void FileSelectMenu_31_TurnSamusHelmet(void) {  // 0x819D77
   DrawFileSelectSlotSamusHelmet(6);
   DrawFileSelectSlotSamusHelmet(8);
   if ((joypad1_newkeys & (kButton_Start | kButton_A)) != 0
-      || eproj_id[2] == 7 && !eproj_index
-      || eproj_id[3] == 7 && !eproj_init_param_1
-      || eproj_id[4] == 7 && !eproj_unk1995) {
+      || (eproj_id[2] == 7 && !eproj_index)
+      || (eproj_id[3] == 7 && !eproj_init_param_1)
+      || (eproj_id[4] == 7 && !eproj_unk1995)) {
     ++menu_index;
   }
 }
@@ -1620,12 +1620,12 @@ LABEL_28:
   if (selected_save_slot == 3) {
     QueueSfx1_Max6(0x37);
     ++menu_index;
-    *(uint16 *)&reg_MOSAIC = *(uint16 *)&reg_MOSAIC & 0xFF0C | 3;
+    *(uint16 *)&reg_MOSAIC = (*(uint16 *)&reg_MOSAIC & 0xFF0C) | 3;
   } else {
     if (selected_save_slot == 4) {
       QueueSfx1_Max6(0x37);
       menu_index += 15;
-      v0 = *(uint16 *)&reg_MOSAIC & 0xFF0C | 3;
+      v0 = (*(uint16 *)&reg_MOSAIC & 0xFF0C) | 3;
       *(uint16 *)&reg_MOSAIC = v0;
     }
     if (v0 == 5)

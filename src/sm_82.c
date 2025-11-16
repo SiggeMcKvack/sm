@@ -1862,7 +1862,7 @@ void ResetPauseMenuAnimations(void) {  // 0x82A0F7
 
 static void ChangePaletteValues(uint16 *target, uint16 new_color, size_t n) {  // 0x82A29D
   for (size_t i = 0; i != n; i++)
-    target[i] = target[i] & ~0x1C00 | new_color;
+    target[i] = (target[i] & ~0x1C00) | new_color;
 }
 
 void LoadEquipmentScreenEquipmentTilemaps(void) {  // 0x82A12B
@@ -2133,42 +2133,42 @@ void SetPauseScreenButtonLabelPalettes_2(void) {  // 0x82A628
   v0 = 10;
   uint16 v1 = 0;
   do {
-    ram3000.pause_menu_map_tilemap[v1 + 805] = ram3000.pause_menu_map_tilemap[v1 + 805] & 0xE3FF | 0x800;
+    ram3000.pause_menu_map_tilemap[v1 + 805] = (ram3000.pause_menu_map_tilemap[v1 + 805] & 0xE3FF) | 0x800;
     ++v1;
     v0 -= 2;
   } while (v0);
   v2 = 10;
   uint16 v3 = 0;
   do {
-    ram3000.pause_menu_map_tilemap[v3 + 837] = ram3000.pause_menu_map_tilemap[v3 + 837] & 0xE3FF | 0x800;
+    ram3000.pause_menu_map_tilemap[v3 + 837] = (ram3000.pause_menu_map_tilemap[v3 + 837] & 0xE3FF) | 0x800;
     ++v3;
     v2 -= 2;
   } while (v2);
   v4 = 8;
   uint16 v5 = 0;
   do {
-    ram3000.pause_menu_map_tilemap[v5 + 812] = ram3000.pause_menu_map_tilemap[v5 + 812] & 0xE3FF | 0x800;
+    ram3000.pause_menu_map_tilemap[v5 + 812] = (ram3000.pause_menu_map_tilemap[v5 + 812] & 0xE3FF) | 0x800;
     ++v5;
     v4 -= 2;
   } while (v4);
   v6 = 8;
   uint16 v7 = 0;
   do {
-    ram3000.pause_menu_map_tilemap[v7 + 844] = ram3000.pause_menu_map_tilemap[v7 + 844] & 0xE3FF | 0x800;
+    ram3000.pause_menu_map_tilemap[v7 + 844] = (ram3000.pause_menu_map_tilemap[v7 + 844] & 0xE3FF) | 0x800;
     ++v7;
     v6 -= 2;
   } while (v6);
   v8 = 10;
   uint16 v9 = 0;
   do {
-    ram3000.pause_menu_map_tilemap[v9 + 822] = ram3000.pause_menu_map_tilemap[v9 + 822] & 0xE3FF | 0x1400;
+    ram3000.pause_menu_map_tilemap[v9 + 822] = (ram3000.pause_menu_map_tilemap[v9 + 822] & 0xE3FF) | 0x1400;
     ++v9;
     v8 -= 2;
   } while (v8);
   v10 = 10;
   uint16 v11 = 0;
   do {
-    ram3000.pause_menu_map_tilemap[v11 + 854] = ram3000.pause_menu_map_tilemap[v11 + 854] & 0xE3FF | 0x1400;
+    ram3000.pause_menu_map_tilemap[v11 + 854] = (ram3000.pause_menu_map_tilemap[v11 + 854] & 0xE3FF) | 0x1400;
     ++v11;
     v10 -= 2;
   } while (v10);
@@ -2185,42 +2185,42 @@ void SetPauseScreenButtonLabelPalettes_1(void) {  // 0x82A6DF
   v0 = 8;
   uint16 v1 = 0;
   do {
-    ram3000.pause_menu_map_tilemap[v1 + 812] = ram3000.pause_menu_map_tilemap[v1 + 812] & 0xE3FF | 0x800;
+    ram3000.pause_menu_map_tilemap[v1 + 812] = (ram3000.pause_menu_map_tilemap[v1 + 812] & 0xE3FF) | 0x800;
     ++v1;
     v0 -= 2;
   } while (v0);
   v2 = 8;
   uint16 v3 = 0;
   do {
-    ram3000.pause_menu_map_tilemap[v3 + 844] = ram3000.pause_menu_map_tilemap[v3 + 844] & 0xE3FF | 0x800;
+    ram3000.pause_menu_map_tilemap[v3 + 844] = (ram3000.pause_menu_map_tilemap[v3 + 844] & 0xE3FF) | 0x800;
     ++v3;
     v2 -= 2;
   } while (v2);
   v4 = 10;
   uint16 v5 = 0;
   do {
-    ram3000.pause_menu_map_tilemap[v5 + 805] = ram3000.pause_menu_map_tilemap[v5 + 805] & 0xE3FF | 0x1400;
+    ram3000.pause_menu_map_tilemap[v5 + 805] = (ram3000.pause_menu_map_tilemap[v5 + 805] & 0xE3FF) | 0x1400;
     ++v5;
     v4 -= 2;
   } while (v4);
   v6 = 10;
   uint16 v7 = 0;
   do {
-    ram3000.pause_menu_map_tilemap[v7 + 837] = ram3000.pause_menu_map_tilemap[v7 + 837] & 0xE3FF | 0x1400;
+    ram3000.pause_menu_map_tilemap[v7 + 837] = (ram3000.pause_menu_map_tilemap[v7 + 837] & 0xE3FF) | 0x1400;
     ++v7;
     v6 -= 2;
   } while (v6);
   v8 = 10;
   uint16 v9 = 0;
   do {
-    ram3000.pause_menu_map_tilemap[v9 + 822] = ram3000.pause_menu_map_tilemap[v9 + 822] & 0xE3FF | 0x1400;
+    ram3000.pause_menu_map_tilemap[v9 + 822] = (ram3000.pause_menu_map_tilemap[v9 + 822] & 0xE3FF) | 0x1400;
     ++v9;
     v8 -= 2;
   } while (v8);
   v10 = 10;
   uint16 v11 = 0;
   do {
-    ram3000.pause_menu_map_tilemap[v11 + 854] = ram3000.pause_menu_map_tilemap[v11 + 854] & 0xE3FF | 0x1400;
+    ram3000.pause_menu_map_tilemap[v11 + 854] = (ram3000.pause_menu_map_tilemap[v11 + 854] & 0xE3FF) | 0x1400;
     ++v11;
     v10 -= 2;
   } while (v10);
@@ -2237,42 +2237,42 @@ void SetPauseScreenButtonLabelPalettes_0(void) {  // 0x82A796
   v0 = 10;
   uint16 v1 = 0;
   do {
-    ram3000.pause_menu_map_tilemap[v1 + 822] = ram3000.pause_menu_map_tilemap[v1 + 822] & 0xE3FF | 0x800;
+    ram3000.pause_menu_map_tilemap[v1 + 822] = (ram3000.pause_menu_map_tilemap[v1 + 822] & 0xE3FF) | 0x800;
     ++v1;
     v0 -= 2;
   } while (v0);
   v2 = 10;
   uint16 v3 = 0;
   do {
-    ram3000.pause_menu_map_tilemap[v3 + 854] = ram3000.pause_menu_map_tilemap[v3 + 854] & 0xE3FF | 0x800;
+    ram3000.pause_menu_map_tilemap[v3 + 854] = (ram3000.pause_menu_map_tilemap[v3 + 854] & 0xE3FF) | 0x800;
     ++v3;
     v2 -= 2;
   } while (v2);
   v4 = 8;
   uint16 v5 = 0;
   do {
-    ram3000.pause_menu_map_tilemap[v5 + 812] = ram3000.pause_menu_map_tilemap[v5 + 812] & 0xE3FF | 0x800;
+    ram3000.pause_menu_map_tilemap[v5 + 812] = (ram3000.pause_menu_map_tilemap[v5 + 812] & 0xE3FF) | 0x800;
     ++v5;
     v4 -= 2;
   } while (v4);
   v6 = 8;
   uint16 v7 = 0;
   do {
-    ram3000.pause_menu_map_tilemap[v7 + 844] = ram3000.pause_menu_map_tilemap[v7 + 844] & 0xE3FF | 0x800;
+    ram3000.pause_menu_map_tilemap[v7 + 844] = (ram3000.pause_menu_map_tilemap[v7 + 844] & 0xE3FF) | 0x800;
     ++v7;
     v6 -= 2;
   } while (v6);
   v8 = 10;
   uint16 v9 = 0;
   do {
-    ram3000.pause_menu_map_tilemap[v9 + 805] = ram3000.pause_menu_map_tilemap[v9 + 805] & 0xE3FF | 0x1400;
+    ram3000.pause_menu_map_tilemap[v9 + 805] = (ram3000.pause_menu_map_tilemap[v9 + 805] & 0xE3FF) | 0x1400;
     ++v9;
     v8 -= 2;
   } while (v8);
   v10 = 10;
   uint16 v11 = 0;
   do {
-    ram3000.pause_menu_map_tilemap[v11 + 837] = ram3000.pause_menu_map_tilemap[v11 + 837] & 0xE3FF | 0x1400;
+    ram3000.pause_menu_map_tilemap[v11 + 837] = (ram3000.pause_menu_map_tilemap[v11 + 837] & 0xE3FF) | 0x1400;
     ++v11;
     v10 -= 2;
   } while (v10);
@@ -2350,7 +2350,7 @@ void EquipmentScreenSetupReserveMode(void) {  // 0x82AB47
       v0 = addr_kEquipmentScreenTilemap_MANUAL;
     uint16 *table = (uint16 *)RomPtr_82(v0);
     for (int i = 0; i < 4; i++)
-      ram3800.cinematic_bg_tilemap[i + 327] = ram3800.cinematic_bg_tilemap[i + 327] & 0xFC00 | table[i];
+      ram3800.cinematic_bg_tilemap[i + 327] = (ram3800.cinematic_bg_tilemap[i + 327] & 0xFC00) | table[i];
   }
   pausemenu_item_selector_animation_frame = 0;
   pausemenu_item_selector_animation_timer = kPauseLrHighlightAnimData[0];
@@ -2485,16 +2485,16 @@ void EquipmentScreenGlowingArrowSolidOff(void) {  // 0x82ADEF
 
 void EquipmentScreenEnergyArrowGlow_On(void) {  // 0x82AE01
   for (int i = 0; i < 8; i++)
-    ram3800.equipment_screen_bg1_tilemap[129 + i * 32] = ram3800.equipment_screen_bg1_tilemap[129 + i * 32] & ~0x1C00 | 0x1800;
+    ram3800.equipment_screen_bg1_tilemap[129 + i * 32] = (ram3800.equipment_screen_bg1_tilemap[129 + i * 32] & ~0x1C00) | 0x1800;
   for(int i = 0; i < 2; i++)
-    ram3800.equipment_screen_bg1_tilemap[385 + i] = ram3800.equipment_screen_bg1_tilemap[385 + i] & ~0x1C00 | 0x1800;
+    ram3800.equipment_screen_bg1_tilemap[385 + i] = (ram3800.equipment_screen_bg1_tilemap[385 + i] & ~0x1C00) | 0x1800;
 }
 
 void EquipmentScreenEnergyArrowGlow_Off(void) {  // 0x82AE46
   for(int i = 0; i < 8; i++)
-    ram3800.equipment_screen_bg1_tilemap[129 + i * 32] = ram3800.equipment_screen_bg1_tilemap[129 + i * 32] & ~0x1C00 | 0x1C00;
+    ram3800.equipment_screen_bg1_tilemap[129 + i * 32] = (ram3800.equipment_screen_bg1_tilemap[129 + i * 32] & ~0x1C00) | 0x1C00;
   for (int i = 0; i < 2; i++)
-    ram3800.equipment_screen_bg1_tilemap[385 + i] = ram3800.equipment_screen_bg1_tilemap[385 + i] & ~0x1C00 | 0x1C00;
+    ram3800.equipment_screen_bg1_tilemap[385 + i] = (ram3800.equipment_screen_bg1_tilemap[385 + i] & ~0x1C00) | 0x1C00;
 }
 
 static const uint16 kEquipmentScreenTilemap_MODE_MANUAL[7] = { 0x2519, 0x251a, 0x251b, 0x3d46, 0x3d47, 0x3d48, 0x3d49 };
@@ -2562,7 +2562,7 @@ void EquipmentScreenCategory_Tanks_0(void) {
       v0 = 8;
       uint16 v1 = 0;
       do {
-        ram3800.cinematic_bg_tilemap[v1 + 327] = kEquipmentScreenTilemap_MANUAL[v1] | ram3800.cinematic_bg_tilemap[v1 + 327] & 0xFC00;
+        ram3800.cinematic_bg_tilemap[v1 + 327] = kEquipmentScreenTilemap_MANUAL[v1] | (ram3800.cinematic_bg_tilemap[v1 + 327] & 0xFC00);
         ++v1;
         v0 -= 2;
       } while (v0);
@@ -2572,7 +2572,7 @@ void EquipmentScreenCategory_Tanks_0(void) {
       v2 = 8;
       uint16 v3 = 0;
       do {
-        ram3800.cinematic_bg_tilemap[v3 + 327] = kEquipmentScreenTilemap_AUTO[v3] | ram3800.cinematic_bg_tilemap[v3 + 327] & 0xFC00;
+        ram3800.cinematic_bg_tilemap[v3 + 327] = kEquipmentScreenTilemap_AUTO[v3] | (ram3800.cinematic_bg_tilemap[v3 + 327] & 0xFC00);
         ++v3;
         v2 -= 2;
       } while (v2);
@@ -2873,7 +2873,7 @@ LABEL_4:
     }
     LOBYTE(v1) = (uint16)(v0 >> 1) >> 8;
     HIBYTE(v1) = v0 >> 1;
-    pausemenu_equipment_category_item = v1 & 0xFF00 | 1;
+    pausemenu_equipment_category_item = (v1 & 0xFF00) | 1;
     QueueSfx1_Max6(0x37);
   }
 }
@@ -2903,7 +2903,7 @@ uint16 EquipmentScreenMoveLowerOnSuitsMisc(uint16 v0) {  // 0x82B4B7
   QueueSfx1_Max6(0x37);
   LOBYTE(v1) = (uint16)(v0 >> 1) >> 8;
   HIBYTE(v1) = v0 >> 1;
-  pausemenu_equipment_category_item = v1 & 0xFF00 | 2;
+  pausemenu_equipment_category_item = (v1 & 0xFF00) | 2;
   return 0;
 }
 
