@@ -6,7 +6,9 @@
 *.o
 /sm
 /build/
+/build-*/
 /sm.smc
 SDL2.dll
 /sm.exe
 /glsl-shaders/
+.claude/settings.local.json
