@@ -1062,7 +1062,7 @@ int32 Samus_CollDetectChangedPose(int32 amt) {  // 0x9496AB
   if ((abs16(amt >> 16) & 0xFFF8) == 0)
     return CollDetectDueToPoseChange_SingleBlock(amt);
   int32 amt_backup = amt;
-  amt = CollDetectDueToPoseChange_SingleBlock(INT16_SHL16((amt >> 16) & 0xFFF0 | 8));
+  amt = CollDetectDueToPoseChange_SingleBlock(INT16_SHL16(((amt >> 16) & 0xFFF0) | 8));
   if (samus_collision_flag)
     return amt;
   return CollDetectDueToPoseChange_SingleBlock(amt_backup);
@@ -2064,8 +2064,8 @@ uint8 BlockCollGrappleBeam(void) {  // 0x94A85B
         __PAIR32__(grapple_beam_end_y_offset, grapple_beam_end_y_suboffset) + __PAIR32__(samus_y_pos, samus_y_subpos) + (grapple_beam_origin_y_offset << 16));
     result = BlockReactGrapple();
     if ((result & 0x40) != 0 && (result & 1) != 0) {
-      grapple_beam_end_x_pos = grapple_beam_end_x_pos & 0xFFF0 | 8;
-      grapple_beam_end_y_pos = grapple_beam_end_y_pos & 0xFFF0 | 8;
+      grapple_beam_end_x_pos = (grapple_beam_end_x_pos & 0xFFF0) | 8;
+      grapple_beam_end_y_pos = (grapple_beam_end_y_pos & 0xFFF0) | 8;
       return result;
     }
   }
@@ -2134,14 +2134,14 @@ static void BlockFunc_A957(uint16 tmpD82, uint16 tmpD84) {
   if ((grapple_beam_flags & 0x8000) == 0) {
     int v1 = tmpD82 >> 1;
     if ((kSinCosTable8bit_Sext[v1 + 64] & 0x8000) != 0)
-      v2 = grapple_beam_end_x_pos & 0xFFF0 | 7;
+      v2 = (grapple_beam_end_x_pos & 0xFFF0) | 7;
     else
-      v2 = grapple_beam_end_x_pos & 0xFFF0 | 8;
+      v2 = (grapple_beam_end_x_pos & 0xFFF0) | 8;
     grapple_beam_end_x_pos = v2;
     if ((kSinCosTable8bit_Sext[v1] & 0x8000) != 0)
-      v3 = grapple_beam_end_y_pos & 0xFFF0 | 7;
+      v3 = (grapple_beam_end_y_pos & 0xFFF0) | 7;
     else
-      v3 = grapple_beam_end_y_pos & 0xFFF0 | 8;
+      v3 = (grapple_beam_end_y_pos & 0xFFF0) | 8;
     grapple_beam_end_y_pos = v3;
   }
   int v4 = v0 >> 1;

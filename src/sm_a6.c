@@ -3321,7 +3321,7 @@ void Ridley_Func_85(void) {  // 0xA6CE65
   tilemap_stuff[31] = LOBYTE(tilemap_stuff[31]) | 0x4000;
   tilemap_stuff[41] = LOBYTE(tilemap_stuff[41]) | 0x4000;
   tilemap_stuff[51] = LOBYTE(tilemap_stuff[51]) | 0x4000;
-  tilemap_stuff[61] = tilemap_stuff[21] & 0x4FF | 0x4000;
+  tilemap_stuff[61] = (tilemap_stuff[21] & 0x4FF) | 0x4000;
   tilemap_stuff[71] = LOBYTE(tilemap_stuff[71]) | 0x4000;
   tilemap_stuff[81] = LOBYTE(tilemap_stuff[81]) | 0x4000;
 }

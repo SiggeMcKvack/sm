@@ -237,7 +237,7 @@ const uint16 *Crocomire_Func_17(uint16 k, const uint16 *jp) {  // 0xA4889A
   Enemy_Crocomire *E = Get_Crocomire(0);
   uint16 crocom_var_B = E->crocom_var_B;
   if ((crocom_var_B & 0x800) != 0) {
-    E->crocom_var_B = crocom_var_B & 0x1F00 | 0xA000;
+    E->crocom_var_B = (crocom_var_B & 0x1F00) | 0xA000;
     E->crocom_var_D = 1;
     E->crocom_var_E = 10;
     E->crocom_var_C = 12;
@@ -389,7 +389,7 @@ void Crocomire_Init(void) {  // 0xA48A5A
     *(uint16 *)&scrolls[2] = 257;
     croco_target_0688 = 0;
     Enemy_Crocomire *E = Get_Crocomire(0);
-    E->base.properties = E->base.properties & 0x7BFF | 0x400;
+    E->base.properties = (E->base.properties & 0x7BFF) | 0x400;
     SpawnHardcodedPlm((SpawnHardcodedPlmArgs) { 0x20, 0x03, 0xb753 });
     SpawnHardcodedPlm((SpawnHardcodedPlmArgs) { 0x1e, 0x03, 0xb753 });
     SpawnHardcodedPlm((SpawnHardcodedPlmArgs) { 0x61, 0x0b, 0xb747 });
@@ -961,7 +961,7 @@ void Crocomire_Func_57(void) {  // 0xA49341
   Enemy_Crocomire *E1 = Get_Crocomire(cur_enemy_index + 64);
   E1->base.current_instruction = addr_kCrocomire_Ilist_BF98;
   E1->base.instruction_timer = 1;
-  E1->base.properties = E1->base.properties & 0xD2FF | 0x2C00;
+  E1->base.properties = (E1->base.properties & 0xD2FF) | 0x2C00;
   E1->base.x_pos = E->base.x_pos;
   E1->base.y_pos = E->base.y_pos + 16;
   uint16 v3 = 0;
@@ -1253,7 +1253,7 @@ void Crocomire_Func_68(void) {  // 0xA497D3
     SpawnHardcodedPlm((SpawnHardcodedPlmArgs) { 0x30, 0x03, 0xb757 });
     camera_distance_index = 6;
     Enemy_Crocomire *E0 = Get_Crocomire(0);
-    E0->base.properties = E0->base.properties & 0x7BFF | kEnemyProps_Tangible;
+    E0->base.properties = (E0->base.properties & 0x7BFF) | kEnemyProps_Tangible;
     Enemy_Crocomire *E1 = Get_Crocomire(0x40);
     E1->base.properties |= 0x500;
     E0->crocom_var_D = 4;
@@ -1547,7 +1547,7 @@ void Crocomire_Powerbomb(void) {  // 0xA4B992
     if (g_word_A4869E) {
       E->crocom_var_D = g_word_A4869E;
       if (E->crocom_var_C != 24) {
-        E->crocom_var_B = E->crocom_var_B & 0x3FF0 | 0x8000;
+        E->crocom_var_B = (E->crocom_var_B & 0x3FF0) | 0x8000;
         E->crocom_var_E = 10;
         E->base.flash_timer += 4;
         E->base.ai_handler_bits |= 2;
@@ -1614,7 +1614,7 @@ LABEL_10:;
         v5 = g_word_A48694;
       E->base.instruction_timer += v5;
     }
-    E->crocom_var_B = v4 | E->crocom_var_B & 0xB7F0 | 0x800;
+    E->crocom_var_B = v4 | (E->crocom_var_B & 0xB7F0) | 0x800;
     E->crocom_var_E = 10;
   }
   E->base.flash_timer += 14;
@@ -1631,7 +1631,7 @@ void Crocomire_Func_1(void) {  // 0xA4BAB4
 void CrocomireTongue_Init(void) {  // 0xA4F67A
   Enemy_Crocomire *E = Get_Crocomire(cur_enemy_index);
   if ((*(uint16 *)&boss_bits_for_area[area_index] & 2) != 0) {
-    E->base.properties = E->base.properties & 0xDCFF | 0x300;
+    E->base.properties = (E->base.properties & 0xDCFF) | 0x300;
   } else {
     E->base.current_instruction = addr_kCrocomire_Ilist_BE56;
     E->base.extra_properties |= 0x404;

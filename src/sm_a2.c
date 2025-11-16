@@ -2067,7 +2067,7 @@ void Rinka_3(uint16 k) {  // 0xA2B7DF
     if (E->rinka_parameter_1)
       v3 = E->base.properties & ~kEnemyProps_Tangible;
     else
-      v3 = E->base.properties & 0xF3FF | 0x800;
+      v3 = (E->base.properties & 0xF3FF) | 0x800;
     E->base.properties = v3;
     uint16 r18 = (uint8)-(CalculateAngleFromXY(samus_x_pos - E->base.x_pos, samus_y_pos - E->base.y_pos) + 0x80);
     E->rinka_var_B = Math_MultBySin(0x120, r18);

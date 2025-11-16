@@ -322,21 +322,21 @@ const uint16 *Torizo_Instr_11(uint16 k, const uint16 *jp) {  // 0xAAC377
 
 const uint16 *Torizo_Instr_29(uint16 k, const uint16 *jp) {  // 0xAAC38A
   Enemy_Torizo *E = Get_Torizo(k);
-  E->toriz_parameter_1 = E->toriz_parameter_1 & 0x1FFF | 0x8000;
+  E->toriz_parameter_1 = (E->toriz_parameter_1 & 0x1FFF) | 0x8000;
   ++E->toriz_var_09;
   return jp;
 }
 
 const uint16 *Torizo_Instr_1(uint16 k, const uint16 *jp) {  // 0xAAC3A0
   Enemy_Torizo *E = Get_Torizo(k);
-  E->toriz_parameter_1 = E->toriz_parameter_1 & 0x1FFF | 0x2000;
+  E->toriz_parameter_1 = (E->toriz_parameter_1 & 0x1FFF) | 0x2000;
   ++E->toriz_var_09;
   return jp;
 }
 
 const uint16 *Torizo_Instr_28(uint16 k, const uint16 *jp) {  // 0xAAC3B6
   Enemy_Torizo *E = Get_Torizo(k);
-  E->toriz_parameter_1 = E->toriz_parameter_1 & 0x1FFF | 0xA000;
+  E->toriz_parameter_1 = (E->toriz_parameter_1 & 0x1FFF) | 0xA000;
   ++E->toriz_var_09;
   return jp;
 }

@@ -205,7 +205,7 @@ uint16 Kraid_CheckIfDead(void) {  // 0xA7A92C
 
 void Kraid_SetEnemyPropsToDead(void) {  // 0xA7A943
   Enemy_Kraid *E = Get_Kraid(cur_enemy_index);
-  E->base.properties = E->base.properties & 0x50FF | 0x700;
+  E->base.properties = (E->base.properties & 0x50FF) | 0x700;
 }
 
 void Kraid_Init(void) {  // 0xA7A959
@@ -1762,7 +1762,7 @@ void Kraid_Death_SinkThroughFloor(void) {  // 0xA7C537
     Enemy_Kraid *E1 = Get_Kraid(0x40);
     uint16 v3 = E1->base.properties | kEnemyProps_Tangible | kEnemyProps_Deleted;
     E1->base.properties = v3;
-    uint16 v4 = v3 & 0x51FF | 0x600;
+    uint16 v4 = (v3 & 0x51FF) | 0x600;
     Get_Kraid(0x80)->base.properties = v4;
     Get_Kraid(0xC0)->base.properties = v4;
     Get_Kraid(0x100)->base.properties = v4;

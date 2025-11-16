@@ -1689,7 +1689,7 @@ void MotherBrain_Phase3_Death_5(void) {  // 0xA9AFB6
       for (int i = 710; i >= 0; i -= 2)
         tilemap_stuff[i >> 1] = 824;
       nmi_flag_bg2_enemy_vram_transfer = 1;
-      E->base.properties = E->base.properties & 0xDEFF | 0x100;
+      E->base.properties = (E->base.properties & 0xDEFF) | 0x100;
       E->base.extra_properties = 0;
       E->mbn_var_A = FUNC16(MotherBrain_Phase3_Death_6);
       E->mbn_var_F = 16;
@@ -1817,7 +1817,7 @@ void MotherBrain_Phase3_Death_13(void) {  // 0xA9B1D5
     ProcessCorpseRottingVramTransfers(dms_var_53);
   } else {
     Enemy_DeadMonsters *E1 = Get_DeadMonsters(0x40);
-    E1->base.properties = E1->base.properties & 0xDEFF | 0x100;
+    E1->base.properties = (E1->base.properties & 0xDEFF) | 0x100;
     E1->base.extra_properties = 0;
     QueueMusic_Delayed8(0);
     QueueMusic_Delayed8(0xFF24);
@@ -4486,7 +4486,7 @@ void DeadSidehopper_Init(void) {  // 0xA9D7B6
 
 void DeadSidehopper_Init_0(void) {  // 0xA9D7C4
   Enemy_DeadSidehopper *E = Get_DeadSidehopper(cur_enemy_index);
-  E->base.properties = E->base.properties & 0x77FF | kEnemyProps_ProcessedOffscreen;
+  E->base.properties = (E->base.properties & 0x77FF) | kEnemyProps_ProcessedOffscreen;
   if ((Get_DeadSidehopper(0)->base.properties & kEnemyProps_Invisible) != 0)
     E->base.properties |= kEnemyProps_Deleted;
   E->dsr_var_08 = 0;

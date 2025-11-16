@@ -1924,7 +1924,7 @@ void Samus_Movement_03_SpinJumping(void) {  // 0x90A436
         || (int16)(*(uint16 *)((uint8 *)&samus_y_subspeed + 1) - kSamusPhys_JumpMaxYVelAir) >= 0) {
         goto LABEL_24;
       }
-      UNUSED_word_7E0DFA = UNUSED_word_7E0DFA & 0xFF00 | 1;
+      UNUSED_word_7E0DFA = (UNUSED_word_7E0DFA & 0xFF00) | 1;
       if ((button_config_jump_a & joypad1_newkeys) != 0)
         Samus_InitJump(); // bug: this overwrites r18
     }
@@ -2344,23 +2344,23 @@ void UpdateMinimapInside(uint16 r18, uint16 r22, uint16 r34, uint16 r30, uint16 
     if (!v4 || (v5 = r0[v2 >> 1], !has_area_map))
       v5 = 31;
     int v6 = v3 >> 1;
-    hud_tilemap[v6 + 26] = v5 & 0xC3FF | 0x2C00;
+    hud_tilemap[v6 + 26] = (v5 & 0xC3FF) | 0x2C00;
 
     v4 = r24 >> 15;
     r24 *= 2;
     if (v4)
-      hud_tilemap[v6 + 26] = r0[v2 >> 1] & 0xC3FF | 0x2800;
-    
+      hud_tilemap[v6 + 26] = (r0[v2 >> 1] & 0xC3FF) | 0x2800;
+
     v4 = r40 >> 15;
     r40 *= 2;
     if (!v4 || (v7 = r3[v2 >> 1], !has_area_map))
       v7 = 31;
-    hud_tilemap[v6 + 58] = v7 & 0xC3FF | 0x2C00;
+    hud_tilemap[v6 + 58] = (v7 & 0xC3FF) | 0x2C00;
 
     v4 = r26 >> 15;
     r26 *= 2;
     if (v4) {
-      hud_tilemap[v6 + 58] = r3[v2 >> 1] & 0xC3FF | 0x2800;
+      hud_tilemap[v6 + 58] = (r3[v2 >> 1] & 0xC3FF) | 0x2800;
       if (n == 3 && (hud_tilemap[v6 + 58] & 0x1FF) == 40) {
         // MarkMapTileAboveSamusAsExplored
         *((uint8 *)&music_data_index + r30) |= kShr0x80[r32];
@@ -2371,12 +2371,12 @@ void UpdateMinimapInside(uint16 r18, uint16 r22, uint16 r34, uint16 r30, uint16 
     r42 *= 2;
     if (!v4 || (v8 = r6[v2 >> 1], !has_area_map))
       v8 = 31;
-    hud_tilemap[v6 + 90] = v8 & 0xC3FF | 0x2C00;
+    hud_tilemap[v6 + 90] = (v8 & 0xC3FF) | 0x2C00;
 
     v4 = r28 >> 15;
     r28 *= 2;
     if (v4)
-      hud_tilemap[v6 + 90] = r6[v2 >> 1] & 0xC3FF | 0x2800;
+      hud_tilemap[v6 + 90] = (r6[v2 >> 1] & 0xC3FF) | 0x2800;
 
     v3 += 2;
     v2 += 2;
@@ -3487,7 +3487,7 @@ void FireChargedBeam(void) {
       uint16 v1 = r20;
       int v2 = r20 >> 1;
       projectile_timers[v2] = 4;
-      uint16 v3 = equipped_beams & 0x100F | 0x8010;
+      uint16 v3 = (equipped_beams & 0x100F) | 0x8010;
       projectile_type[v2] = v3;
       QueueSfx1_Max15(kChargedProjectile_Sfx[v3 & 0xF]);
       play_resume_charging_beam_sfx = 0;
@@ -4309,7 +4309,7 @@ uint8 FireSba_FireWave(void) {  // 0x90CD1A
   for (int i = 6; i >= 0; i -= 2) {
     int v1 = i >> 1;
     projectile_timers[v1] = 4;
-    projectile_type[v1] = equipped_beams & 0x100F | 0x8010;
+    projectile_type[v1] = (equipped_beams & 0x100F) | 0x8010;
     projectile_dir[v1] = 0;
     projectile_bomb_pre_instructions[v1] = FUNC16(ProjPreInstr_WaveSba);
     projectile_bomb_y_speed[v1] = 600;
@@ -4338,7 +4338,7 @@ uint8 FireSba_FireIce(void) {  // 0x90CD9B
   for (int i = 6; i >= 0; i -= 2) {
     int v2 = i >> 1;
     projectile_timers[v2] = 4;
-    projectile_type[v2] = equipped_beams & 0x100F | 0x8010;
+    projectile_type[v2] = (equipped_beams & 0x100F) | 0x8010;
     projectile_dir[v2] = 0;
     projectile_bomb_pre_instructions[v2] = FUNC16(ProjPreInstr_IceSba);
     projectile_variables[v2] = kIcePlasmaSbaProjectileOriginAngles[v2];
@@ -4374,7 +4374,7 @@ uint8 FireSba_FireSpazer(void) {  // 0x90CE14
       projectile_type[i >> 1] = -32732;
       InitializeShinesparkEchoOrSpazerSba(i);
     } else {
-      projectile_type[i >> 1] = equipped_beams & 0x100F | 0x8010;
+      projectile_type[i >> 1] = (equipped_beams & 0x100F) | 0x8010;
       InitializeSbaProjectile(i);
     }
   }
@@ -4393,7 +4393,7 @@ uint8 FireSba_FirePlasma(void) {  // 0x90CE98
     return 0;
   for (int i = 6; i >= 0; i -= 2) {
     int v2 = i >> 1;
-    projectile_type[v2] = equipped_beams & 0x100F | 0x8010;
+    projectile_type[v2] = (equipped_beams & 0x100F) | 0x8010;
     projectile_dir[v2] = 0;
     projectile_bomb_pre_instructions[v2] = FUNC16(ProjPreInstr_PlasmaSba);
     projectile_variables[v2] = kIcePlasmaSbaProjectileOriginAngles[v2];
@@ -5814,7 +5814,7 @@ void Samus_ReleaseFromDraygon(void) {  // 0x90E2DE
   samus_y_dir = 0;
   used_for_ball_bounce_on_landing = 0;
   samus_x_accel_mode = 0;
-  samus_grapple_flags = samus_grapple_flags & 0xFFFD | 2;
+  samus_grapple_flags = (samus_grapple_flags & 0xFFFD) | 2;
 }
 
 void Samus_Func7(void) {  // 0x90E3A3

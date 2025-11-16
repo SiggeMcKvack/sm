@@ -1257,7 +1257,7 @@ void YappingMaw_Func_18(uint16 j) {  // 0xA8A85D
   Enemy_YappingMaw *E = Get_YappingMaw(cur_enemy_index);
   eproj_gfx_idx[v1] = E->ymw_var_45 | eproj_gfx_idx[v1] & 0xF1FF;
   if (E->base.frozen_timer) {
-    eproj_gfx_idx[v1] = eproj_gfx_idx[v1] & 0xF1FF | 0xC00;
+    eproj_gfx_idx[v1] = (eproj_gfx_idx[v1] & 0xF1FF) | 0xC00;
     uint16 frozen_timer = E->base.frozen_timer;
     if (sign16(frozen_timer - 90)) {
       if ((frozen_timer & 2) == 0)
@@ -1272,7 +1272,7 @@ void YappingMaw_Func_19(void) {  // 0xA8A899
   uint16 r20 = E->ymw_var_46;
   sprite_palettes[r20 >> 1] = r18 | sprite_palettes[r20 >> 1] & 0xF1FF;
   if (E->base.frozen_timer) {
-    sprite_palettes[r20 >> 1] = sprite_palettes[r20 >> 1] & 0xF1FF | 0xC00;
+    sprite_palettes[r20 >> 1] = (sprite_palettes[r20 >> 1] & 0xF1FF) | 0xC00;
     uint16 frozen_timer = E->base.frozen_timer;
     if (sign16(frozen_timer - 90)) {
       if ((frozen_timer & 2) == 0)

@@ -65,7 +65,7 @@ void KillProjectileInner(uint16 k) {  // 0x9380CF
     if (!cinematic_function)
       QueueSfx2_Max6(7);
     uint16 v2 = projectile_type[v1];
-    projectile_type[v1] = v2 & 0xF0FF | 0x800;
+    projectile_type[v1] = (v2 & 0xF0FF) | 0x800;
     if ((v2 & 0x200) != 0) {
       projectile_bomb_instruction_ptr[v1] = HIWORD(g_stru_938691.damages);
       earthquake_type = 20;
@@ -76,7 +76,7 @@ void KillProjectileInner(uint16 k) {  // 0x9380CF
     if (!sign16(cooldown_timer - 21))
       cooldown_timer = 20;
   } else {
-    projectile_type[v1] = projectile_type[v1] & 0xF0FF | 0x700;
+    projectile_type[v1] = (projectile_type[v1] & 0xF0FF) | 0x700;
     projectile_bomb_instruction_ptr[v1] = HIWORD(g_stru_938679.damages);
     QueueSfx2_Max6(0xC);
   }

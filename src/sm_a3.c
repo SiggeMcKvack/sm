@@ -1702,7 +1702,7 @@ uint16 Bang_Func_4(uint16 a) {  // 0xA3BBEB
   projectile_x_pos[v3] = E->base.x_pos;
   projectile_y_pos[v3] = E->base.y_pos;
   projectile_dir[v3] = a;
-  projectile_type[v3] = equipped_beams & 0xF | 0x10;
+  projectile_type[v3] = (equipped_beams & 0xF) | 0x10;
   ++projectile_counter;
   ProjectileReflection(i);
   projectile_damage[v3] = E->bang_var_E;

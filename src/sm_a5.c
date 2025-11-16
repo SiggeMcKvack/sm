@@ -1298,7 +1298,7 @@ const uint16 *Draygon_Instr_27(uint16 k, const uint16 *jp) {  // 0xA5E87C
   Enemy_Draygon *E = Get_Draygon(0);
   E->base.x_pos = 128;
   E->base.y_pos = 624;
-  E->base.properties = E->base.properties & 0x5BFF | 0xA000;
+  E->base.properties = (E->base.properties & 0x5BFF) | 0xA000;
   return jp;
 }
 
