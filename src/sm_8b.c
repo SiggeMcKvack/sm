@@ -764,7 +764,7 @@ void ComposeFadingPalettes(void) {  // 0x8B8CEA
     int v2 = v0 >> 1;
     int r18 = HIBYTE(tilemap_stuff[v2 + 512]) & 0x1F;
     r18 |= (tilemap_stuff[v2 + 768] >> 3) & 0x3E0;
-    uint16 v3 = r18 | (tilemap_stuff[v2 + 1024] << 2) & 0x7C00;
+    uint16 v3 = r18 | ((tilemap_stuff[v2 + 1024] << 2) & 0x7C00);
     tilemap_stuff[v2] = v3;
     palette_buffer[v2] = v3;
     v0 += 2;
@@ -1468,8 +1468,8 @@ void ProcessTextGlowObject(void) {  // 0x8B9849
     int m = v5[3];
     while (1) {
       do {
-        *(uint16 *)((uint8 *)ram3000.pause_menu_map_tilemap + v4) = 
-            R28 | *(uint16 *)((uint8 *)ram3000.pause_menu_map_tilemap + v4) & 0xE3FF;
+        *(uint16 *)((uint8 *)ram3000.pause_menu_map_tilemap + v4) =
+            R28 | (*(uint16 *)((uint8 *)ram3000.pause_menu_map_tilemap + v4) & 0xE3FF);
         v3 += 2;
         v4 += 2;
       } while (--n);

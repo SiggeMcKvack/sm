@@ -2235,7 +2235,7 @@ void EprojPreInstr_BombTorizosChozoOrbs(uint16 k) {  // 0x86ACAD
         eproj_id[v1] = 0;
     } else {
       int v4 = k >> 1;
-      eproj_y_pos[v4] = (eproj_y_pos[v4] & 0xFFF0 | 8) - 2;
+      eproj_y_pos[v4] = ((eproj_y_pos[v4] & 0xFFF0) | 8) - 2;
       eproj_instr_list_ptr[v4] = addr_off_86AB41;
       eproj_instr_timers[v4] = 1;
     }
@@ -2258,7 +2258,7 @@ void EprojPreInstr_GoldenTorizosChozoOrbs(uint16 k) {  // 0x86ACFA
           eproj_y_vel[v1] = v4,
           (v4 & 0xFF80) == 0xFF80)) {
     int v5 = k >> 1;
-    eproj_y_pos[v5] = (eproj_y_pos[v5] & 0xFFF0 | 8) - 2;
+    eproj_y_pos[v5] = ((eproj_y_pos[v5] & 0xFFF0) | 8) - 2;
     eproj_instr_list_ptr[v5] = addr_off_86AB41;
     eproj_instr_timers[v5] = 1;
   } else {
@@ -2483,7 +2483,7 @@ void EprojPreInstr_GoldenTorizoEyeBeam(uint16 k) {  // 0x86B38A
   }
   if (EprojBlockCollisition_Vertical(k) & 1) {
     int v1 = k >> 1;
-    eproj_y_pos[v1] = (eproj_y_pos[v1] & 0xFFF0 | 8) - 2;
+    eproj_y_pos[v1] = ((eproj_y_pos[v1] & 0xFFF0) | 8) - 2;
     eproj_instr_list_ptr[v1] = addr_off_86B3E5;
     eproj_instr_timers[v1] = 1;
     return;

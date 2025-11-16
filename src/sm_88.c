@@ -3000,7 +3000,7 @@ void sub_88E7ED(void) {  // 0x88E7ED
   }
   reg_COLDATA[0] = (v0 & 0x1F) | 0x20;
   reg_COLDATA[1] = ((v0 >> 5) & 0x1F) | 0x40;
-  reg_COLDATA[2] = ((uint16)(v0 >> 2) >> 8) & 0x1F | 0x80;
+  reg_COLDATA[2] = (((uint16)(v0 >> 2) >> 8) & 0x1F) | 0x80;
 }
 
 void SpawnMorphBallEyeBeamHdma(void) {  // 0x88E8D9
