@@ -14,6 +14,7 @@ enum {
 };
 
 Config g_config;
+uint8 enhanced_features0;
 
 #define REMAP_SDL_KEYCODE(key) ((key) & SDLK_SCANCODE_MASK ? kKeyMod_ScanCode : 0) | (key) & (kKeyMod_ScanCode - 1)
 #define _(x) REMAP_SDL_KEYCODE(x)
@@ -372,6 +373,48 @@ static bool HandleIniConfig(int section, const char *key, char *value) {
     } else if (StringEqualsNoCase(key, "Shader")) {
       g_config.shader = *value ? value : NULL;
       return true;
+    } else if (StringEqualsNoCase(key, "ExtendedAspectRatio")) {
+      // Parse comma-separated modifiers and aspect ratio (e.g., "extend_y, 16:9")
+      char *s;
+      int aspect_width = 0, aspect_height = 0;
+      g_config.extend_y = false;
+      g_config.features0 = kFeatures0_ExtendScreen64 | kFeatures0_WidescreenVisualFixes;
+
+      while ((s = NextDelim(&value, ',')) != NULL) {
+        // Trim leading/trailing spaces
+        while (*s == ' ' || *s == '\t') s++;
+        if (*s == 0) continue;
+
+        // Check for modifiers
+        if (StringEqualsNoCase(s, "extend_y")) {
+          g_config.extend_y = true;
+        } else if (StringEqualsNoCase(s, "unchanged_sprites")) {
+          g_config.features0 &= ~kFeatures0_ExtendScreen64;
+        } else if (StringEqualsNoCase(s, "no_visual_fixes")) {
+          g_config.features0 &= ~kFeatures0_WidescreenVisualFixes;
+        } else {
+          // Try to parse as aspect ratio (e.g., "16:9")
+          char *colon = strchr(s, ':');
+          if (colon) {
+            *colon = 0;
+            aspect_width = atoi(s);
+            aspect_height = atoi(colon + 1);
+          }
+        }
+      }
+
+      // Calculate extended_aspect_ratio from aspect ratio
+      if (aspect_width > 0 && aspect_height > 0) {
+        int height = g_config.extend_y ? 240 : 224;
+        // Formula: (height * aspect_width / aspect_height - 256) / 2
+        g_config.extended_aspect_ratio = (uint8)((height * aspect_width / aspect_height - 256) / 2);
+      } else {
+        // Default to 4:3 (no extension)
+        g_config.extended_aspect_ratio = 0;
+      }
+      // Update global feature flags
+      enhanced_features0 = g_config.features0;
+      return true;
     }
   } else if (section == 2) {
     if (StringEqualsNoCase(key, "EnableAudio")) {
@@ -410,6 +453,8 @@ static bool HandleIniConfig(int section, const char *key, char *value) {
       return true;
     } else if (StringEqualsNoCase(key, "DisplayPerfInTitle")) {
       return ParseBool(value, &g_config.display_perf_title);
+    } else if (StringEqualsNoCase(key, "DebugDisplay")) {
+      return ParseBool(value, &g_config.debug_display);
     } else if (StringEqualsNoCase(key, "DisableFrameDelay")) {
       return ParseBool(value, &g_config.disable_frame_delay);
     }

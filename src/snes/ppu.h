@@ -23,8 +23,11 @@ typedef struct BgLayer {
 } BgLayer;
 
 enum {
-  kPpuXPixels = 256,
-  kPpuExtraLeftRight = 0,
+  kPpuEnableLargeScreen = 1,
+  // Maximum extra pixels on each side for widescreen (96 pixels = max 192 total extra)
+  kPpuExtraLeftRight = kPpuEnableLargeScreen ? 96 : 0,
+  // Total pixel width including max widescreen extension
+  kPpuXPixels = 256 + kPpuExtraLeftRight * 2,
 };
 
 typedef uint16_t PpuZbufType;
@@ -180,6 +183,7 @@ void ppu_runLine(Ppu* ppu, int line);
 uint8_t ppu_read(Ppu* ppu, uint8_t adr);
 void ppu_write(Ppu* ppu, uint8_t adr, uint8_t val);
 void ppu_saveload(Ppu *ppu, SaveLoadFunc *func, void *ctx);
+void PpuSetExtraSideSpace(Ppu* ppu, int left, int right);
 void PpuBeginDrawing(Ppu *ppu, uint8_t *pixels, size_t pitch, uint32_t render_flags);
 
 int PpuGetCurrentRenderScale(Ppu *ppu, uint32_t render_flags);

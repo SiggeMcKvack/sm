@@ -2,6 +2,7 @@
 #include "types.h"
 #include "snes/cpu.h"
 #include "snes/snes.h"
+#include "config.h"
 #include "tracing.h"
 #include "ida_types.h"
 #include "variables.h"
@@ -1029,6 +1030,67 @@ getout:
     g_got_mismatch_count--;
 }
 
+static const char *kAreaNames[] = { "Crateria", "Brinstar", "Norfair", "WreckedShip", "Maridia", "Tourian", "Ceres", "Debug" };
+
+static void PrintDebugInfo(void) {
+  static uint32 frame_counter = 0;
+  static uint32 last_print_frame = 0;
+  extern Config g_config;
+  extern Snes *g_snes;
+
+  frame_counter++;
+
+  if (!g_config.debug_display)
+    return;
+
+  // Throttle to once per second (60 frames)
+  if (frame_counter - last_print_frame < 60)
+    return;
+  last_print_frame = frame_counter;
+
+  const char *area_name = (area_index < 8) ? kAreaNames[area_index] : "Unknown";
+  Ppu *ppu = g_snes ? g_snes->my_ppu : NULL;
+
+  printf("[Frame:%u Room:0x%04X Area:%d(%s) ScrollX:%d(%d-%d) ScrollY:%d(%d-%d)",
+         frame_counter, room_index, area_index, area_name,
+         layer1_x_pos, map_min_x_scroll, map_max_x_scroll,
+         layer1_y_pos, map_min_y_scroll, map_max_y_scroll);
+
+  if (ppu && ppu->extraLeftRight > 0) {
+    printf(" WS:L%d/R%d/%d", ppu->extraLeftCur, ppu->extraRightCur, ppu->extraLeftRight);
+  }
+
+  printf(" Samus:(%d,%d)]\n", samus_x_pos, samus_y_pos);
+}
+
+static void ConfigurePpuSideSpace(void) {
+  // Dynamically adjust widescreen boundaries based on room scroll limits
+  extern Snes *g_snes;
+  if (!g_snes || !g_snes->my_ppu || !g_snes->snes_ppu)
+    return;
+
+  Ppu *ppu = g_snes->my_ppu;
+  if (ppu->extraLeftRight == 0)
+    return; // Widescreen not enabled
+
+  // Get current scroll position and room limits
+  uint16 scroll_x = layer1_x_pos;
+  uint16 min_x = map_min_x_scroll;
+  uint16 max_x = map_max_x_scroll;
+
+  // Calculate how much extra space we can show on each side
+  // Left: can show extra if we're not at the left edge
+  int left_space = (scroll_x > min_x) ? ppu->extraLeftRight : 0;
+
+  // Right: can show extra if we're not at the right edge
+  // Standard screen width is 256, so right edge is at scroll_x + 256
+  int right_space = (scroll_x + 256 < max_x) ? ppu->extraLeftRight : 0;
+
+  // Set the calculated boundaries
+  PpuSetExtraSideSpace(ppu, left_space, right_space);
+  PpuSetExtraSideSpace(g_snes->snes_ppu, left_space, right_space);
+}
+
 void RtlRunFrameCompare(uint16 input, int run_what) {
   g_snes->input1->currentState = input;
 
@@ -1047,4 +1109,10 @@ void RtlRunFrameCompare(uint16 input, int run_what) {
     g_use_my_apu_code = true;
     RunOneFrameOfGame_Both();
   }
+
+  // Configure widescreen boundaries dynamically based on scroll position
+  ConfigurePpuSideSpace();
+
+  // Print debug info if enabled
+  PrintDebugInfo();
 }

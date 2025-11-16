@@ -50,8 +50,8 @@ bool g_other_image;
 struct SpcPlayer *g_spc_player;
 static uint32_t button_state;
 
-static uint8_t g_pixels[256 * 4 * 240];
-static uint8_t g_my_pixels[256 * 4 * 240];
+static uint8_t *g_pixels;
+static uint8_t *g_my_pixels;
 
 int g_got_mismatch_count;
 
@@ -164,8 +164,9 @@ static SDL_HitTestResult HitTestCallback(SDL_Window *win, const SDL_Point *pt, v
 
 void RtlDrawPpuFrame(uint8 *pixel_buffer, size_t pitch, uint32 render_flags) {
   uint8 *ppu_pixels = g_other_image ? g_my_pixels : g_pixels;
-  for (size_t y = 0; y < 240; y++)
-    memcpy((uint8_t *)pixel_buffer + y * pitch, ppu_pixels + y * 256 * 4, 256 * 4);
+  size_t row_bytes = g_snes_width * 4;
+  for (size_t y = 0; y < g_snes_height; y++)
+    memcpy((uint8_t *)pixel_buffer + y * pitch, ppu_pixels + y * row_bytes, row_bytes);
 }
 
 static void DrawPpuFrameWithPerf(void) {
@@ -337,6 +338,16 @@ int main(int argc, char** argv) {
     g_config.extend_y * kPpuRenderFlags_Height240 |
     g_config.no_sprite_limits * kPpuRenderFlags_NoSpriteLimits;
 
+  // Allocate pixel buffers based on configured width/height
+  size_t pixel_buffer_size = g_snes_width * 4 * g_snes_height;
+  g_pixels = (uint8_t *)malloc(pixel_buffer_size);
+  g_my_pixels = (uint8_t *)malloc(pixel_buffer_size);
+  if (!g_pixels || !g_my_pixels) {
+    Die("Failed to allocate pixel buffers");
+  }
+  memset(g_pixels, 0, pixel_buffer_size);
+  memset(g_my_pixels, 0, pixel_buffer_size);
+
   if (g_config.fullscreen == 1)
     g_win_flags ^= SDL_WINDOW_FULLSCREEN_DESKTOP;
   else if (g_config.fullscreen == 2)
@@ -389,6 +400,16 @@ int main(int argc, char** argv) {
     return 1;
   }
 
+  // Initialize PPU widescreen settings
+  uint8 extra_pixels = g_config.extended_aspect_ratio < kPpuExtraLeftRight ? g_config.extended_aspect_ratio : kPpuExtraLeftRight;
+  snes->snes_ppu->extraLeftRight = extra_pixels;
+  snes->my_ppu->extraLeftRight = extra_pixels;
+  // Start with full widescreen enabled (dynamic adjustment will modify these per-frame)
+  snes->snes_ppu->extraLeftCur = extra_pixels;
+  snes->snes_ppu->extraRightCur = extra_pixels;
+  snes->my_ppu->extraLeftCur = extra_pixels;
+  snes->my_ppu->extraRightCur = extra_pixels;
+
   SDL_Window *window = SDL_CreateWindow(kWindowTitle, SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, window_width, window_height, g_win_flags);
   if(window == NULL) {
     printf("Failed to create window: %s\n", SDL_GetError());
@@ -424,8 +445,8 @@ int main(int argc, char** argv) {
     g_audiobuffer = (uint8 *)malloc(g_frames_per_block * have.channels * sizeof(int16));
   }
 
-  PpuBeginDrawing(snes->snes_ppu, g_pixels, 256 * 4, 0);
-  PpuBeginDrawing(snes->my_ppu, g_my_pixels, 256 * 4, 0);
+  PpuBeginDrawing(snes->snes_ppu, g_pixels, g_snes_width * 4, 0);
+  PpuBeginDrawing(snes->my_ppu, g_my_pixels, g_snes_width * 4, 0);
 
 #if defined(_WIN32)
   _mkdir("saves");

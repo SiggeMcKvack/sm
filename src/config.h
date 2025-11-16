@@ -61,6 +61,7 @@ typedef struct Config {
   bool extend_y;
   bool no_sprite_limits;
   bool display_perf_title;
+  bool debug_display;
   uint8 enable_msu;
   bool resume_msu;
   bool disable_frame_delay;
