@@ -119,8 +119,8 @@ void getProcessorStateCpu(Snes* snes, char* line) {
   // CPU 12:3456 1234567890123 A:1234 X:1234 Y:1234 SP:1234 DP:1234 DP:12 e nvmxdizc
   char disLine[14] = "             ";
   getDisassemblyCpu(snes, disLine);
-  sprintf(
-    line, "CPU %02x:%04x %s A:%04x X:%04x Y:%04x SP:%04x DP:%04x DB:%02x %c %c%c%c%c%c%c%c%c",
+  snprintf(
+    line, 80, "CPU %02x:%04x %s A:%04x X:%04x Y:%04x SP:%04x DP:%04x DB:%02x %c %c%c%c%c%c%c%c%c",
     snes->cpu->k, snes->cpu->pc, disLine, snes->cpu->a, snes->cpu->x, snes->cpu->y,
     snes->cpu->sp, snes->cpu->dp, snes->cpu->db, snes->cpu->e ? 'E' : 'e',
     snes->cpu->n ? 'N' : 'n', snes->cpu->v ? 'V' : 'v', snes->cpu->mf ? 'M' : 'm', snes->cpu->xf ? 'X' : 'x',
@@ -134,8 +134,8 @@ void getProcessorStateSpc(Apu* apu, char* line) {
   // SPC 3456 12345678901234567 A:12 X:12 Y:12 SP:12 nvpbhizc
   char disLine[18] = "                 ";
   getDisassemblySpc(apu, disLine);
-  sprintf(
-    line, "SPC %04x %s A:%02x X:%02x Y:%02x SP:%02x %c%c%c%c%c%c%c%c",
+  snprintf(
+    line, 80, "SPC %04x %s A:%02x X:%02x Y:%02x SP:%02x %c%c%c%c%c%c%c%c",
     apu->spc->pc, disLine, apu->spc->a, apu->spc->x, apu->spc->y, apu->spc->sp,
     apu->spc->n ? 'N' : 'n', apu->spc->v ? 'V' : 'v', apu->spc->p ? 'P' : 'p', apu->spc->b ? 'B' : 'b',
     apu->spc->h ? 'H' : 'h', apu->spc->i ? 'I' : 'i', apu->spc->z ? 'Z' : 'z', apu->spc->c ? 'C' : 'c'
@@ -155,29 +155,29 @@ static void getDisassemblyCpu(Snes* snes, char* line) {
   uint16_t rell = snes->cpu->pc + 3 + (int16_t) word;
   // switch on type
   switch(opcodeType[opcode]) {
-    case 0: sprintf(line, "%s", opcodeNames[opcode]); break;
-    case 1: sprintf(line, opcodeNames[opcode], byte); break;
-    case 2: sprintf(line, opcodeNames[opcode], word); break;
-    case 3: sprintf(line, opcodeNames[opcode], longv); break;
+    case 0: snprintf(line, 14, "%s", opcodeNames[opcode]); break;
+    case 1: snprintf(line, 14, opcodeNames[opcode], byte); break;
+    case 2: snprintf(line, 14, opcodeNames[opcode], word); break;
+    case 3: snprintf(line, 14, opcodeNames[opcode], longv); break;
     case 4: {
       if(snes->cpu->mf) {
-        sprintf(line, opcodeNamesSp[opcode], byte);
+        snprintf(line, 14, opcodeNamesSp[opcode], byte);
       } else {
-        sprintf(line, opcodeNames[opcode], word);
+        snprintf(line, 14, opcodeNames[opcode], word);
       }
       break;
     }
     case 5: {
       if(snes->cpu->xf) {
-        sprintf(line, opcodeNamesSp[opcode], byte);
+        snprintf(line, 14, opcodeNamesSp[opcode], byte);
       } else {
-        sprintf(line, opcodeNames[opcode], word);
+        snprintf(line, 14, opcodeNames[opcode], word);
       }
       break;
     }
-    case 6: sprintf(line, opcodeNames[opcode], rel); break;
-    case 7: sprintf(line, opcodeNames[opcode], rell); break;
-    case 8: sprintf(line, opcodeNames[opcode], byte2, byte); break;
+    case 6: snprintf(line, 14, opcodeNames[opcode], rel); break;
+    case 7: snprintf(line, 14, opcodeNames[opcode], rell); break;
+    case 8: snprintf(line, 14, opcodeNames[opcode], byte2, byte); break;
   }
 }
 
@@ -195,12 +195,12 @@ void getDisassemblySpc(Apu* apu, char* line) {
   uint8_t bit = word >> 13;
   // switch on type
   switch(opcodeTypeSpc[opcode]) {
-    case 0: sprintf(line, "%s", opcodeNamesSpc[opcode]); break;
-    case 1: sprintf(line, opcodeNamesSpc[opcode], byte); break;
-    case 2: sprintf(line, opcodeNamesSpc[opcode], word); break;
-    case 3: sprintf(line, opcodeNamesSpc[opcode], rel); break;
-    case 4: sprintf(line, opcodeNamesSpc[opcode], byte2, byte); break;
-    case 5: sprintf(line, opcodeNamesSpc[opcode], byte, rel2); break;
-    case 6: sprintf(line, opcodeNamesSpc[opcode], wordb, bit); break;
+    case 0: snprintf(line, 18, "%s", opcodeNamesSpc[opcode]); break;
+    case 1: snprintf(line, 18, opcodeNamesSpc[opcode], byte); break;
+    case 2: snprintf(line, 18, opcodeNamesSpc[opcode], word); break;
+    case 3: snprintf(line, 18, opcodeNamesSpc[opcode], rel); break;
+    case 4: snprintf(line, 18, opcodeNamesSpc[opcode], byte2, byte); break;
+    case 5: snprintf(line, 18, opcodeNamesSpc[opcode], byte, rel2); break;
+    case 6: snprintf(line, 18, opcodeNamesSpc[opcode], wordb, bit); break;
   }
 }

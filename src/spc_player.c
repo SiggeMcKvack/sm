@@ -8,6 +8,7 @@
 #include "snes/spc.h"
 #include "snes/dsp_regs.h"
 #include "tracing.h"
+#include "util.h"
 
 void Sfx1_HandleCmdFromSnes(SpcPlayer *p);
 void Sfx2_HandleCmdFromSnes(SpcPlayer *p);
@@ -1511,7 +1512,7 @@ void Sfx3_Init(SpcPlayer *p) {
 }
 
 SpcPlayer *SpcPlayer_Create(void) {
-  SpcPlayer *p = (SpcPlayer *)malloc(sizeof(SpcPlayer));
+  SpcPlayer *p = (SpcPlayer *)xmalloc(sizeof(SpcPlayer));
   memset(p, 0, sizeof(SpcPlayer));
   p->dsp = dsp_init(p->ram);
   p->reg_write_history = 0;
@@ -1681,7 +1682,7 @@ void RunAudioPlayer(void) {
     printf("Failed to open audio device: %s\n", SDL_GetError());
     return;
   }
-  int16_t* audioBuffer = (int16_t*)malloc(735 * 4); // *2 for stereo, *2 for sizeof(int16)
+  int16_t* audioBuffer = (int16_t*)xmalloc(735 * 4); // *2 for stereo, *2 for sizeof(int16)
   SDL_PauseAudioDevice(device, 0);
 
   memset(&my_spc, 0, sizeof(my_spc));

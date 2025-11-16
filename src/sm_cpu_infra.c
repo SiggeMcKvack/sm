@@ -103,13 +103,17 @@ bool FixBugHook(uint32 addr) {
   return false;
 }
 
+// ROM addresses where carry flag needs to be explicitly cleared before ADC operations
+// The original SNES code relied on CPU state that isn't preserved in the C reimplementation
+// These patches ensure correct arithmetic by clearing the carry flag before addition
 static const  uint32 kPatchedCarrys[] = {
+  // Unknown function - ADC operations requiring carry clear
   0xa7ac33,
   0xa7ac36,
   0xa7ac39,
   0xa7ac42,
   0xa7ac45,
-  // Ridley_Func_107
+  // Ridley_Func_107 - Ridley boss logic ADC operations
   0xa6d6d1,
   0xa6d6d3,
   0xa6d6d5,
@@ -165,7 +169,7 @@ static const  uint32 kPatchedCarrys[] = {
   // Shitroid_Func_16
   0xA9F24D,
 
-  // Lots of ADC
+  // Various ADC operations in core game logic (position calculations, sprite handling)
   0x80AA6A,
   0x80A592,
   0x80A720,
@@ -175,10 +179,11 @@ static const  uint32 kPatchedCarrys[] = {
   0x94B176,
   0x94B156,
 
-  // MotherBrain
+  // MotherBrain - Final boss ADC operations
   0xA99413,
 
-  // room_width_in_blocks etc
+  // Room dimension calculations (room_width_in_blocks, room_height_in_blocks)
+  // These ADC operations compute room boundaries and tile positions
   0x80ab5d,
   0x84865c,
   0x848d90,
@@ -237,33 +242,39 @@ static const  uint32 kPatchedCarrys[] = {
   0xA9D537,
   0xA9DCDB,
 
-
+  // Enemy/sprite positioning and movement calculations
   0xA0A31B,
   0x91D064,
   0x91D07A,
 
+  // Scrolling and camera logic
   0x90C719,
 
+  // Enemy AI calculations
   0xA6A80E,
   0xA6A816,
 
+  // Projectile physics
   0xA4906E,
   0xA49071,
 
+  // Samus movement and physics
   0x90BC75,
   0x90BC93,
 
+  // Animation frame calculations (set 1)
   0xA8A459,
   0xA8A45F,
   0xA8A465,
   0xA8A46B,
 
+  // Animation frame calculations (set 2)
   0xA8A477,
   0xA8A47D,
   0xA8A483,
   0xA8A489,
 
-
+  // Sprite tile calculations
   0xA8a543,
   0xA8a54f,
   0xA8a55b,
@@ -272,55 +283,111 @@ static const  uint32 kPatchedCarrys[] = {
   0xA8a57f,
   0xA8a58b,
 
-  0x84D7CB, // PlmInstr room_width
+  // PLM (Point of Lifeform Emergence) room width instructions
+  0x84D7CB,
   0x84D7E2,
   0x84D7F4,
   0x84D803,
 
+  // Sound effect handlers
   0x8888CD,
-
   0x8888F0,
   0x8888E3,
 
+  // Graphics and rendering calculations
   0x80A5F3,
   0x80A845,
   0x80A925,
   0x80A6AA,
 
+  // Enemy state machine transitions
   0x948D94,
   0x948E25,
 
+  // Collision detection
   0x9082A8,
   0x9082AE,
 
+  // Boss pattern calculations
   0xA48CA1,
   0xA48CA4,
 };
 
 static uint8 kPatchedCarrysOrg[arraysize(kPatchedCarrys)];
 
+/**
+ * PatchBugs - Runtime bug fixes for original SNES code issues
+ *
+ * This function patches bugs in the original Super Metroid ROM code that become
+ * visible when running the C reimplementation. The original SNES code relied on
+ * uninitialized CPU state, undefined behavior, or had subtle logic errors that
+ * were masked by the hardware's deterministic behavior.
+ *
+ * Each fix is triggered at a specific ROM address and corrects:
+ * - Uninitialized CPU registers (A, X, Y)
+ * - Incorrect flag assumptions (Z, C)
+ * - Out-of-bounds memory access
+ * - Logic errors in state machines
+ *
+ * @param mode Hook mode (execution context)
+ * @param addr ROM address where the hook is triggered
+ * @return New program counter address if control flow changes, 0 otherwise
+ */
 uint32 PatchBugs(uint32 mode, uint32 addr) {
   hookmode = mode, hookadr = addr, hookcnt = 0;
+
+  // BUG: EprojInit_F336 - Uninitialized X register
+  // FIX: Copy Y to X before use
   if (FixBugHook(0x86EF35)) {
     g_cpu->x = g_cpu->y;
+
+  // BUG: EprojInit_F337 - Assumes zero flag is set based on A without comparison
+  // FIX: Explicitly set zero flag after checking A
+  // IMPACT: Fixes incorrect enemy projectile initialization
   } else if (FixBugHook(0x86EF45)) {
-    g_cpu->z = (g_cpu->a == 0); // EprojInit_F337 doesn't compare A and assumes Z is in it.
+    g_cpu->z = (g_cpu->a == 0);
+
+  // BUG: Graphics routine - Missing bounds check on Y
+  // FIX: Skip problematic code path when Y is zero
   } else if (FixBugHook(0x818ab8)) {
     if (g_cpu->y == 0)
       g_cpu->pc = 0x8b1f;
-  } else if (FixBugHook(0xa794ba)) { // Kraid_Arm_Shot - y undefined
+
+  // BUG: Kraid_Arm_Shot - Y register contains garbage
+  // FIX: Copy X (which has valid enemy index) to Y
+  // IMPACT: Prevents Kraid arm projectiles from using invalid coordinates
+  } else if (FixBugHook(0xa794ba)) {
     g_cpu->y = g_cpu->x;
-  } else if (FixBugHook(0xa7b968)) {  // KraidEnemy_ProcessInstrEnemyTimer - X is undefined
+  // BUG: KraidEnemy_ProcessInstrEnemyTimer - X register uninitialized
+  // FIX: Set X to current enemy index
+  } else if (FixBugHook(0xa7b968)) {
     g_cpu->x = cur_enemy_index;
-  } else if (FixBugHook(0xa7b963)) {  // KraidFoot_FirstPhase_Thinking - X is undefined
+
+  // BUG: KraidFoot_FirstPhase_Thinking - X register uninitialized
+  // FIX: Set X to current enemy index
+  } else if (FixBugHook(0xa7b963)) {
     g_cpu->x = cur_enemy_index;
-  } else if (FixBugHook(0xA496C8)) { // Crocomire_Func_67 assumes A is zero
+
+  // BUG: Crocomire_Func_67 - Assumes A register is zero without initialization
+  // FIX: Explicitly zero A register
+  } else if (FixBugHook(0xA496C8)) {
     g_cpu->a = 0;
-  } else if (FixBugHook(0x9085AA)) { // Samus_HandleSpeedBoosterAnimDelay doesn't preserve A
+
+  // BUG: Samus_HandleSpeedBoosterAnimDelay - Destroys A register value
+  // FIX: Restore A from speed_boost_counter
+  // IMPACT: Speed booster animation timing works correctly
+  } else if (FixBugHook(0x9085AA)) {
     g_cpu->a = speed_boost_counter;
-  } else if (FixBugHook(0xA29044) || FixBugHook(0xA2905D)) { // MaridiaBeybladeTurtle_Func8 thinks INC sets carry
+
+  // BUG: MaridiaBeybladeTurtle_Func8 - Incorrectly assumes INC instruction sets carry flag
+  // FIX: Set carry flag based on whether A wrapped to zero
+  // IMPACT: Turtle enemy movement calculations work correctly
+  } else if (FixBugHook(0xA29044) || FixBugHook(0xA2905D)) {
     g_cpu->c = (g_cpu->a == 0);
-  } else if (FixBugHook(0xa29051)) {  /// MaridiaBeybladeTurtle_Func8 does an INC too much
+
+  // BUG: MaridiaBeybladeTurtle_Func8 - Performs one too many increment operations
+  // FIX: Decrement A to compensate for extra INC
+  } else if (FixBugHook(0xa29051)) {
     g_cpu->a--;
   } else if (FixBugHook(0xA5931C)) {  // Draygon_Func_35 needs cur_enemy_index in X
     g_cpu->x = cur_enemy_index;

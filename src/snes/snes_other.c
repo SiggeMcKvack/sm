@@ -9,6 +9,7 @@
 #include "cart.h"
 #include "ppu.h"
 #include "dsp.h"
+#include "../util.h"
 
 typedef struct CartHeader {
   // normal header
@@ -83,7 +84,7 @@ bool snes_loadRom(Snes* snes, const uint8_t* data, int length) {
     }
     newLength *= 2;
   }
-  uint8_t* newData = malloc(newLength);
+  uint8_t* newData = xmalloc(newLength);
   memcpy(newData, data, length);
   int test = 1;
   while(length != newLength) {

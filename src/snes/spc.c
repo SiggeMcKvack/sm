@@ -8,6 +8,7 @@
 
 #include "spc.h"
 #include "apu.h"
+#include "../util.h"
 
 static const int cyclesPerOpcode[256] = {
   2, 8, 4, 5, 3, 4, 3, 6, 2, 6, 5, 4, 5, 4, 6, 8,
@@ -55,7 +56,7 @@ static void spc_write(Spc* spc, uint16_t adr, uint8_t val) {
 }
 
 Spc* spc_init(Apu* apu) {
-  Spc* spc = malloc(sizeof(Spc));
+  Spc* spc = xmalloc(sizeof(Spc));
   spc->apu = apu;
   return spc;
 }

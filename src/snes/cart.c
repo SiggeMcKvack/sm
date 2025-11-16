@@ -6,6 +6,7 @@
 #include "../types.h"
 #include "cart.h"
 #include "snes.h"
+#include "../util.h"
 
 static uint8_t cart_readLorom(Cart* cart, uint8_t bank, uint16_t adr);
 static void cart_writeLorom(Cart* cart, uint8_t bank, uint16_t adr, uint8_t val);
@@ -13,7 +14,7 @@ static uint8_t cart_readHirom(Cart* cart, uint8_t bank, uint16_t adr);
 static void cart_writeHirom(Cart* cart, uint8_t bank, uint16_t adr, uint8_t val);
 
 Cart* cart_init(Snes* snes) {
-  Cart* cart = malloc(sizeof(Cart));
+  Cart* cart = xmalloc(sizeof(Cart));
   cart->snes = snes;
   cart->type = 0;
   cart->rom = NULL;
@@ -39,10 +40,10 @@ void cart_load(Cart* cart, int type, uint8_t* rom, int romSize, int ramSize) {
   cart->type = type;
   if(cart->rom != NULL) free(cart->rom);
   if(cart->ram != NULL) free(cart->ram);
-  cart->rom = malloc(romSize);
+  cart->rom = xmalloc(romSize);
   cart->romSize = romSize;
   if(ramSize > 0) {
-    cart->ram = malloc(ramSize);
+    cart->ram = xmalloc(ramSize);
     memset(cart->ram, 0, ramSize);
   } else {
     cart->ram = NULL;

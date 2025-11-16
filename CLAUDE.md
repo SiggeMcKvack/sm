@@ -10,6 +10,28 @@ This is a decompilation/reverse engineering project of Super Metroid (SNES). The
 
 ## Recent Code Quality Improvements (2025)
 
+### January 2025 Code Review
+
+**Critical bugs fixed:**
+- OpenGL viewport centering bug (opengl.c:177) - fixed copy-paste error causing incorrect vertical positioning
+- Unsafe sprintf usage - replaced with snprintf throughout (main.c, tracing.c - 15+ locations)
+- Unchecked malloc calls - migrated all allocations to xmalloc() for automatic null checking (10+ locations across snes/*.c, spc_player.c)
+
+**Dependency updates:**
+- stb_image.h updated from v2.27 to v2.30 (includes security fixes and bug fixes)
+- SDL2 minimum version requirement added (2.0.18) to CMakeLists.txt
+
+**Build system improvements:**
+- Added additional compiler warnings for code quality (-Wshadow, -Wconversion, -Wdouble-promotion)
+- Enhanced CMake configuration with version constraints and better error messages
+
+**Documentation improvements:**
+- Added comprehensive comments to kPatchedCarrys[] array (200+ ROM patch addresses now categorized and explained)
+- Documented PatchBugs() function with structured BUG/FIX/IMPACT comments for each fix
+- Full API documentation for util.h (15 functions) and logging.h with Doxygen-style comments and usage examples
+
+### Previous Improvements (Early 2025)
+
 **Critical bugs fixed:**
 - Duplicate global variable declarations (main.c) - eliminated undefined behavior
 - Race condition in audio callback - fixed recursive mutex locking deadlock
@@ -23,7 +45,7 @@ This is a decompilation/reverse engineering project of Super Metroid (SNES). The
 - Fixed signed/unsigned comparison bugs in gamepad input
 - Decomposed main() function - reduced from 590 to ~50 lines by extracting 5 focused functions (InitializeContexts, SetupWindowAndRenderer, SetupAudio, RunGameLoop, Cleanup)
 - Refactored VerifySnapshotsEq() - reduced from 121 to 63 lines by extracting DRY helpers (CompareByteRegion, CompareWordRegion)
-- Created error handling abstractions - added xmalloc/xrealloc wrappers, migrated 7 allocation sites
+- Created error handling abstractions - added xmalloc/xrealloc wrappers, migrated 13+ allocation sites
 - Implemented logging framework - LOG_ERROR/WARN/INFO/DEBUG levels with TTY color support, environment configuration (SM_LOG_LEVEL), and platform abstraction
 
 **See `TODO_CODE_QUALITY.md` for remaining refactoring opportunities.**

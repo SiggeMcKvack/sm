@@ -9,6 +9,7 @@
 #include "ppu.h"
 #include "snes.h"
 #include "../types.h"
+#include "../util.h"
 typedef uint64_t uint64;
 typedef uint32_t uint32;
 typedef uint32_t uint;
@@ -97,7 +98,7 @@ enum {
 };
 
 Ppu* ppu_init(Snes* snes) {
-  Ppu* ppu = malloc(sizeof(Ppu));
+  Ppu* ppu = xmalloc(sizeof(Ppu));
   ppu->snes = snes;
   return ppu;
 }

@@ -7,9 +7,10 @@
 
 #include "input.h"
 #include "snes.h"
+#include "../util.h"
 
 Input* input_init(Snes* snes) {
-  Input* input = malloc(sizeof(Input));
+  Input* input = xmalloc(sizeof(Input));
   input->snes = snes;
   // TODO: handle (where?)
   input->type = 1;

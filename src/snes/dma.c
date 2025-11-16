@@ -9,6 +9,7 @@
 
 #include "dma.h"
 #include "snes.h"
+#include "../util.h"
 
 static const int bAdrOffsets[8][4] = {
   {0, 0, 0, 0},
@@ -28,7 +29,7 @@ static const int transferLength[8] = {
 static void dma_transferByte(Dma* dma, uint16_t aAdr, uint8_t aBank, uint8_t bAdr, bool fromB);
 
 Dma* dma_init(Snes* snes) {
-  Dma* dma = malloc(sizeof(Dma));
+  Dma* dma = xmalloc(sizeof(Dma));
   dma->snes = snes;
   return dma;
 }

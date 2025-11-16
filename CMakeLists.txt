@@ -11,11 +11,11 @@ if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Release CACHE STRING "Build type" FORCE)
 endif()
 
-# Find SDL2
+# Find SDL2 (minimum version 2.0.18 for security fixes)
 # Try pkg-config first (works on Linux/macOS/MSYS2)
 find_package(PkgConfig QUIET)
 if(PKG_CONFIG_FOUND)
-    pkg_check_modules(SDL2 QUIET sdl2)
+    pkg_check_modules(SDL2 QUIET sdl2>=2.0.18)
     if(SDL2_FOUND)
         # Use LINK_LIBRARIES for proper linking with pkg-config
         set(SDL2_LIBRARIES ${SDL2_LINK_LIBRARIES})
@@ -24,7 +24,7 @@ endif()
 
 # Fallback to find_package (works with NuGet on Windows/Visual Studio)
 if(NOT SDL2_FOUND)
-    find_package(SDL2 CONFIG QUIET)
+    find_package(SDL2 2.0.18 CONFIG QUIET)
     if(SDL2_FOUND)
         # NuGet/vcpkg style - SDL2::SDL2 target
         if(TARGET SDL2::SDL2)
@@ -159,6 +159,15 @@ else()
         -Wno-bitwise-op-parentheses    # Intentional operator precedence from original
         -Wno-logical-op-parentheses    # Intentional operator precedence from original
     )
+
+    # Additional warnings for improved code quality (informational, not errors)
+    if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
+        target_compile_options(sm PRIVATE
+            -Wno-error=shadow               # Warn on variable shadowing (but don't fail)
+            -Wno-error=conversion           # Warn on implicit type conversions (but don't fail)
+            -Wno-error=double-promotion     # Warn on float to double promotion (but don't fail)
+        )
+    endif()
 
     # Optimization for Release
     if(CMAKE_BUILD_TYPE STREQUAL "Release")

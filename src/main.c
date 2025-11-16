@@ -689,7 +689,7 @@ static void RenderDigit(uint8 *dst, size_t pitch, int digit, uint32 color, bool 
 static void RenderNumber(uint8 *dst, size_t pitch, int n, uint8 big) {
   char buf[32], *s;
   int i;
-  sprintf(buf, "%d", n);
+  snprintf(buf, sizeof(buf), "%d", n);
   for (s = buf, i = 2 * 4; *s; s++, i += 8 * 4)
     RenderDigit(dst + ((pitch + i + 4) << big), pitch, *s - '0', 0x404040, big);
   for (s = buf, i = 2 * 4; *s; s++, i += 8 * 4)
