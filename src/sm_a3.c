@@ -2816,9 +2816,9 @@ void Metroid_Hurt(void) {  // 0xA3EB33
   if ((E->base.flash_timer & 2) != 0) {
     uint16 r18 = E->base.palette_index;
     int v1 = E->metroid_var_00 >> 1;
-    sprite_palettes[v1] = r18 | sprite_palettes[v1] & 0xF1FF;
+    sprite_palettes[v1] = r18 | (sprite_palettes[v1] & 0xF1FF);
     int v2 = E->metroid_var_01 >> 1;
-    sprite_palettes[v2] = r18 | sprite_palettes[v2] & 0xF1FF;
+    sprite_palettes[v2] = r18 | (sprite_palettes[v2] & 0xF1FF);
   } else {
     int v3 = E->metroid_var_00 >> 1;
     sprite_palettes[v3] &= 0xF1FF;

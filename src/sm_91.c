@@ -78,7 +78,7 @@ void Samus_InputHandler(void) {  // 0x918000
 }
 
 void Samus_Input_00_Standing(void) {  // 0x91804D
-  if (samus_pose && samus_pose != kPose_9B_FaceF_VariaGravitySuit || !elevator_status)
+  if ((samus_pose && samus_pose != kPose_9B_FaceF_VariaGravitySuit) || !elevator_status)
     Samus_LookupTransitionTable();
 }
 
@@ -659,7 +659,7 @@ static void XrayFillUpRamped(uint16 *dest, int pos, uint32 left, uint32 left_ste
     uint32 right_val = (right & ~0xffff) ? (((int32)right < 0) ? 0 : 0xffff) : right;
     // If both left and right reached the end, fill the remainder with 0xff
     bool finished = (left & ~0xffff) && (right & ~0xffff) && (((left_step ^ left) | (right_step ^ right)) >> 31) == 0;
-    dest[pos >> 1] = ((int32)right < 0 || (int32)left >= 0x10000) ? 0xff : (left_val >> 8 | right_val & ~0xff);
+    dest[pos >> 1] = ((int32)right < 0 || (int32)left >= 0x10000) ? 0xff : (left_val >> 8 | (right_val & ~0xff));
     if (finished) {
       pos += adjust;
       while ((pos -= 2) >= 0)
@@ -677,7 +677,7 @@ static void XrayFillDownRamped(uint16 *dest, int pos, uint32 left, uint32 left_s
     uint32 right_val = (right & ~0xffff) ? (((int32)right < 0) ? 0 : 0xffff) : right;
     bool finished = (left & ~0xffff) && (right & ~0xffff) && (((left_step ^ left) | (right_step ^ right)) >> 31) == 0;
     // If both left and right got clamped, fill the remainder with 0xff
-    dest[pos >> 1] = ((int32)right < 0 || (int32)left >= 0x10000) ? 0xff : (left_val >> 8 | right_val & ~0xff);
+    dest[pos >> 1] = ((int32)right < 0 || (int32)left >= 0x10000) ? 0xff : (left_val >> 8 | (right_val & ~0xff));
     if (finished) {
       pos += adjust;
       while ((pos += 2) < 460)
@@ -1905,10 +1905,10 @@ uint8 Xray_Initialize(void) {  // 0x91E16D
   0, 0, 0, 0,
   };
 
-  if (cooldown_timer == 7 && bomb_counter == 5 && samus_x_speed_divisor == 2
-      || !sign16(samus_pose - kPose_A4_FaceR_LandJump)
+  if ((cooldown_timer == 7 && bomb_counter == 5 && samus_x_speed_divisor == 2)
+      || (!sign16(samus_pose - kPose_A4_FaceR_LandJump)
       && (sign16(samus_pose - kPose_A8_FaceR_Grappling)
-          || !sign16(samus_pose - kPose_E0_FaceR_LandJump_AimU) && sign16(samus_pose - kPose_E8_FaceR_Drained_CrouchFalling))
+          || (!sign16(samus_pose - kPose_E0_FaceR_LandJump_AimU) && sign16(samus_pose - kPose_E8_FaceR_Drained_CrouchFalling))))
       || game_state != 8
       || power_bomb_explosion_status
       || samus_y_speed
@@ -2387,7 +2387,7 @@ uint8 Samus_HandleTransFromBlockColl_1_1(void) {  // 0x91EA07
   int16 v0;
 
   v0 = 2 * used_for_ball_bounce_on_landing;
-  if (2 * used_for_ball_bounce_on_landing) {
+  if ((2 * used_for_ball_bounce_on_landing) != 0) {
     if (v0 == 2) {
       samus_new_pose = samus_pose;
       return 0;
@@ -3060,7 +3060,7 @@ uint8 Samus_MorphBallBounceNoSpringballTrans(void) {  // 0x91F1FC
   int16 v0;
 
   v0 = 2 * used_for_ball_bounce_on_landing;
-  if (2 * used_for_ball_bounce_on_landing) {
+  if ((2 * used_for_ball_bounce_on_landing) != 0) {
     if (v0 == 2) {
       ++used_for_ball_bounce_on_landing;
       samus_y_dir = 1;
@@ -3773,7 +3773,7 @@ LABEL_6:
 void HandleJumpTransition_NormalJump(void) {  // 0x91FC66
   if (samus_pose == kPose_4B_FaceR_Jumptrans
       || samus_pose == kPose_4C_FaceL_Jumptrans
-      || !sign16(samus_pose - kPose_55_FaceR_Jumptrans_AimU) && sign16(samus_pose - kPose_5B)) {
+      || (!sign16(samus_pose - kPose_55_FaceR_Jumptrans_AimU) && sign16(samus_pose - kPose_5B))) {
     if (samus_prev_pose == kPose_27_FaceR_Crouch || samus_prev_pose == kPose_28_FaceL_Crouch)
       samus_y_pos -= 10;
     Samus_InitJump();

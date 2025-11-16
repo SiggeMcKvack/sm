@@ -242,7 +242,7 @@ LABEL_10:
   if (samus_collision_direction & 1)
     return pgci->pgci_r32 & 7;
   else
-    return pgci->pgci_r32 & 7 ^ 7;
+    return (pgci->pgci_r32 & 7) ^ 7;
 }
 
 static uint16 PostGrappleColl_Vertical_Slope_Square(PostGrappleCollInfo *pgci, uint16 k) {  // 0x948230
@@ -268,7 +268,7 @@ LABEL_10:
   if (samus_collision_direction & 1)
     return pgci->pgci_r32 & 7;
   else
-    return pgci->pgci_r32 & 7 ^ 7;
+    return (pgci->pgci_r32 & 7) ^ 7;
 }
 
 static uint16 ClearCarry_0(PostGrappleCollInfo *pgci) {  // 0x9482A7
@@ -501,7 +501,7 @@ static uint8 BlockColl_Vert_Slope_NonSquare(CollInfo *ci, uint16 k) {  // 0x9486
       return 0;
     uint16 v4 = (BTS[k] & 0x40) != 0 ? (samus_x_pos ^ 0xF) : (samus_x_pos);
     uint16 v5 = 16 * (BTS[k] & 0x1F) + (v4 & 0xF);
-    int16 v6 = (kAlignYPos_Tab0[v5] & 0x1F) - ((ci->ci_r24 - samus_y_radius) & 0xF ^ 0xF) - 1;
+    int16 v6 = (kAlignYPos_Tab0[v5] & 0x1F) - (((ci->ci_r24 - samus_y_radius) & 0xF) ^ 0xF) - 1;
     if (v6 <= 0) {
       int16 v7 = (ci->ci_r18_r20 >> 16) + v6;
       if (v7 < 0)
@@ -537,7 +537,7 @@ void Samus_AlignYPosSlope(void) {  // 0x9487F4
   R28 = samus_y_pos - samus_y_radius;
   CalculateBlockAt(r26, R28, 0, 0);
   if ((level_data[cur_block_index] & 0xF000) == 4096 && (BTS[cur_block_index] & 0x1F) >= 5) {
-    uint16 temp_collision_DD4 = (samus_y_pos - samus_y_radius) & 0xF ^ 0xF;
+    uint16 temp_collision_DD4 = (((samus_y_pos - samus_y_radius) & 0xF) ^ 0xF);
     uint16 temp_collision_DD6 = 16 * (BTS[cur_block_index] & 0x1F);
     uint8 v3 = BTS[cur_block_index];
     if (v3 & 0x80) {
@@ -1335,7 +1335,7 @@ void BlockInsideDetection(void) {  // 0x949B60
   }
   inside_block_reaction_samus_point = 2;
   if (((samus_bottom_boundary_position ^ (uint16)(samus_y_pos - samus_y_radius)) & 0xFFF0) != 0
-      && ((samus_y_pos ^ (samus_bottom_boundary_position ^ (uint16)(samus_y_pos - samus_y_radius)) & 0xFFF0) & 0xFFF0) != 0) {
+      && ((samus_y_pos ^ ((samus_bottom_boundary_position ^ (uint16)(samus_y_pos - samus_y_radius)) & 0xFFF0)) & 0xFFF0) != 0) {
     r26 = samus_x_pos;
     r28 = samus_y_pos - samus_y_radius;
     CalculateBlockAt(r26, r28, 0, 0);
@@ -2387,7 +2387,7 @@ uint8 HandleMovementAndCollForSamusGrapple(void) {  // 0x94ACFE
       HIBYTE(v4) = grapple_beam_tmpD86 >> 1;
       grapple_beam_end_angle16 = v4 | 0x80;
       grapple_beam_end_angles_mirror = v4 | 0x80;
-      if (g_word_7E0D98 != 6 && g_word_7E0D98 != 5 || grapple_beam_length != 8)
+      if ((g_word_7E0D98 != 6 && g_word_7E0D98 != 5) || grapple_beam_length != 8)
         goto LABEL_39;
 LABEL_23:
       grapple_beam_unkD36 |= 0x8000;
@@ -2513,7 +2513,7 @@ void HandleGrappleBeamGfx(void) {  // 0x94AFBA
   uint32 r32_r30 = (int16)kSinCosTable8bit_Sext[v1] << 11;
 
   uint16 chr = (grapple_beam_end_angle_hi & 0x80) >> 1;
-  chr |= 2 * ((grapple_beam_end_angle_hi ^ chr) & 0x40 ^ 0x40);
+  chr |= 2 * ((grapple_beam_end_angle_hi ^ chr) & 0x40) ^ 0x40;
   chr <<= 8;
 
   uint32 r20_r18 = (x_pos_of_start_of_grapple_beam_prevframe - layer1_x_pos - 4) << 16;

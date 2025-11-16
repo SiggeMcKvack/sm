@@ -148,7 +148,7 @@ void MotherBrain_CalcHdma_Up_UpRight(uint16 r22, uint16 r24) {  // 0xADE02C
     if (__CFADD__uint16(r20, r24))
       v7 = -1;
     r24 = v7;
-    uint16 v8 = R36 | v7 & 0xFF00;
+    uint16 v8 = R36 | (v7 & 0xFF00);
     if (v8 == 0xffff)
       v8 = 255;
     *v2-- = v8;
@@ -176,7 +176,7 @@ void MotherBrain_CalcHdma_Up_Up(uint16 r22, uint16 r24) {  // 0xADE0A6
     if (__CFADD__uint16(r20, r24))
       v7 = -1;
     r24 = v7;
-    uint16 v8 = r26 | v7 & 0xFF00;
+    uint16 v8 = r26 | (v7 & 0xFF00);
     if (v8 == 0xffff)
       v8 = 255;
     *v2-- = v8;
@@ -204,7 +204,7 @@ void MotherBrain_CalcHdma_Up_UpLeft(uint16 r22, uint16 r24) {  // 0xADE124
     if (r24 < r20)
       v7 = 0;
     r24 = v7;
-    uint16 v8 = R36 | v7 & 0xFF00;
+    uint16 v8 = R36 | (v7 & 0xFF00);
     if (v8 == 0xffff)
       v8 = 255;
     *v2-- = v8;
@@ -249,7 +249,7 @@ void MotherBrain_CalcHdma_Down_DownRight(uint16 r22, uint16 r24) {  // 0xADE216
     if (__CFADD__uint16(r20, r24))
       v7 = -1;
     r24 = v7;
-    uint16 v8 = r26 | v7 & 0xFF00;
+    uint16 v8 = r26 | (v7 & 0xFF00);
     if (v8 == 0xffff)
       v8 = 255;
     *dst++ = v8;
@@ -279,7 +279,7 @@ void MotherBrain_CalcHdma_Down_Down(uint16 r22, uint16 r24) {  // 0xADE293
     if (__CFADD__uint16(r20, r24))
       v7 = -1;
     r24 = v7;
-    uint16 v8 = r26 | v7 & 0xFF00;
+    uint16 v8 = r26 | (v7 & 0xFF00);
     if (v8 == 0xffff)
       v8 = 255;
     *dst++ = v8;
@@ -310,7 +310,7 @@ void MotherBrain_CalcHdma_Down_DownLeft(uint16 r22, uint16 r24) {  // 0xADE314
     if (r24 < r20)
       v7 = 0;
     r24 = v7;
-    uint16 v8 = r26 | v7 & 0xFF00;
+    uint16 v8 = r26 | (v7 & 0xFF00);
     if (!v8)
       v8 = 255;
     *dst++ = v8;

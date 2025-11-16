@@ -355,7 +355,7 @@ static uint8 Samus_HandleSpeedBoosterAnimDelay(const uint8 *jp) {  // 0x90852C
     }
   }
   int v3 = HIBYTE(v2);
-  speed_boost_counter = kSpeedBoostToCtr[v3] | speed_boost_counter & 0xFF00;
+  speed_boost_counter = kSpeedBoostToCtr[v3] | (speed_boost_counter & 0xFF00);
   samus_anim_frame = 0;
   samus_anim_frame_timer = samus_anim_frame_buffer + RomPtr_91(kSpeedBoostToAnimFramePtr[v3])[0];
   return 0;
@@ -3820,7 +3820,7 @@ void ProjectileReflection(uint16 r20) {  // 0x90BE00
 }
 
 void HudSelectionHandler_MissilesOrSuperMissiles(void) {  // 0x90BE62
-  if ((button_config_shoot_x & joypad1_newkeys) == 0 && (button_config_shoot_x & joypad1_newinput_samusfilter) == 0
+  if (((button_config_shoot_x & joypad1_newkeys) == 0 && (button_config_shoot_x & joypad1_newinput_samusfilter) == 0)
       || !(Samus_CanFireSuperMissile() & 1)) {
     return;
   }
@@ -3983,7 +3983,7 @@ uint8 HudSelectionHandler_MorphBall_Helper(void) {  // 0x90C0AB
 
 uint8 HudSelectionHandler_MorphBall_Helper2(void) {  // 0x90C0E7
   if ((button_config_shoot_x & joypad1_newkeys) == 0
-      || bomb_counter && (!sign16(bomb_counter - 5) || (uint8)cooldown_timer)) {
+      || (bomb_counter && (!sign16(bomb_counter - 5) || (uint8)cooldown_timer))) {
     if (flare_counter) {
       QueueSfx1_Max9(2);
       flare_counter = 0;

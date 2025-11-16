@@ -955,7 +955,7 @@ void Kraid_Shot_GlowHisEye(void) {  // 0xA7B6D7
       ++v1;
       v4 = 992;
     }
-    palette_buffer[v2] = v4 | v3 | palette_buffer[v2] & 0xFC00;
+    palette_buffer[v2] = v4 | v3 | (palette_buffer[v2] & 0xFC00);
     v0 += 2;
   } while ((int16)(v0 - 232) < 0);
   if ((int16)(v1 - 6) >= 0)
