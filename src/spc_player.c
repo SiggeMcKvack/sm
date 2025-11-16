@@ -497,7 +497,7 @@ static void Channel_SetInstrument_NoSetId(SpcPlayer *p, Channel *c, uint8 instru
   uint8 reg = c->index * 16;
   if (ip[0] & 0x80) {
     // noise
-    p->reg_FLG = (p->reg_FLG & 0x20) | ip[0] & 0x1f;
+    p->reg_FLG = (p->reg_FLG & 0x20) | (ip[0] & 0x1f);
     p->reg_NON |= p->cur_chan_bit;
     Dsp_Write(p, reg + V0SRCN, 0);
   } else {
@@ -1117,7 +1117,7 @@ static const uint8 kSfx1Conf[] = {
 void Sfx1_HandleCmdFromSnes(SpcPlayer *p) {
   uint8 a = p->input_ports[1];
   p->input_ports[1] = 255;
-  if (a == 255 || a == 0 || a != 1 && a != 2 && p->sfx1.priority) {
+  if (a == 255 || a == 0 || (a != 1 && a != 2 && p->sfx1.priority)) {
     if (p->sfx1.cur_sound)
       Sfx1_Process(p);
     return;
@@ -1197,7 +1197,7 @@ static const uint8 kSfx2Conf[] = {
 void Sfx2_HandleCmdFromSnes(SpcPlayer *p) {
   uint8 a = p->input_ports[2];
   p->input_ports[2] = 255;
-  if (a == 255 || a == 0 || a != 0x71 && a != 0x7e && p->sfx2.priority) {
+  if (a == 255 || a == 0 || (a != 0x71 && a != 0x7e && p->sfx2.priority)) {
     if (p->sfx2.cur_sound)
       Sfx2_Process(p);
     return;
@@ -1250,7 +1250,7 @@ static const uint8 kSfx3Conf[] = {
 void Sfx3_HandleCmdFromSnes(SpcPlayer *p) {
   uint8 a = p->input_ports[3];
   p->input_ports[3] = 255;
-  if (a == 255 || a == 0 || a != 1 && (p->sfx3.some_value == 2 || a != 2 && p->sfx3.priority)) {
+  if (a == 255 || a == 0 || (a != 1 && (p->sfx3.some_value == 2 || (a != 2 && p->sfx3.priority)))) {
     if (p->sfx3.cur_sound)
       Sfx3_Process(p);
     return;
