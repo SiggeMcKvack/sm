@@ -464,7 +464,7 @@ uint8 SamusBottomDrawn_3_SpinJump(void) {  // 0x9086C6
 }
 
 uint8 SamusBottomDrawn_A_Knockback(void) {  // 0x9086EE
-  if (samus_pose != kPose_D7_FaceR_CrystalFlashEnd && samus_pose != kPose_D8_FaceL_CrystalFlashEnd
+  if ((samus_pose != kPose_D7_FaceR_CrystalFlashEnd && samus_pose != kPose_D8_FaceL_CrystalFlashEnd)
       || !sign16(samus_anim_frame - 3)) {
     return 1;
   }
@@ -496,8 +496,8 @@ LABEL_8:
 }
 
 uint8 UNUSED_SamusBottomDrawn_D(void) {  // 0x90874C
-  if (samus_pose != (kPose_44_FaceL_Turn_Crouch | kPose_01_FaceR_Normal | 0x20)
-      && samus_pose != (kPose_44_FaceL_Turn_Crouch | kPose_02_FaceL_Normal | 0x20)
+  if ((samus_pose != (kPose_44_FaceL_Turn_Crouch | kPose_01_FaceR_Normal | 0x20)
+      && samus_pose != (kPose_44_FaceL_Turn_Crouch | kPose_02_FaceL_Normal | 0x20))
       || sign16(samus_anim_frame - 1)) {
     return 1;
   }
@@ -523,7 +523,7 @@ uint8 SamusBottomDrawn_1B(void) {  // 0x908790
   if (sign16(samus_pose - kPose_CF_FaceR_Ranintowall_AimUR)) {
     if (samus_pose != kPose_CB_FaceR_Shinespark_Vert && samus_pose != kPose_CC_FaceL_Shinespark_Vert)
       return 1;
-  } else if (samus_pose != kPose_E8_FaceR_Drained_CrouchFalling && samus_pose != kPose_E9_FaceL_Drained_CrouchFalling
+  } else if ((samus_pose != kPose_E8_FaceR_Drained_CrouchFalling && samus_pose != kPose_E9_FaceL_Drained_CrouchFalling)
              || !sign16(samus_anim_frame - 2)) {
     return 1;
   }
@@ -865,7 +865,7 @@ PairU16 Samus_CalcSpritemapPos_Special(uint16 j) {  // 0x908D98
   if (v1 == kPose_E8_FaceR_Drained_CrouchFalling || v1 == kPose_E9_FaceL_Drained_CrouchFalling) {
     v2 = byte_908DEF[samus_anim_frame];
   } else {
-    if (v1 != kPose_EA_FaceR_Drained_Stand && v1 != kPose_EB_FaceL_Drained_Stand || (int16)(samus_anim_frame - 5) < 0) {
+    if ((v1 != kPose_EA_FaceR_Drained_Stand && v1 != kPose_EB_FaceL_Drained_Stand) || (int16)(samus_anim_frame - 5) < 0) {
       return Samus_CalcSpritemapPos_Default(j);
     }
     v2 = -3;
@@ -978,7 +978,7 @@ void Samus_JumpingMovement(void) {  // 0x908FB3
   Samus_HandleExtraRunspeedX();
   if (samus_pose == kPose_4B_FaceR_Jumptrans
       || samus_pose == kPose_4C_FaceL_Jumptrans
-      || !sign16(samus_pose - kPose_55_FaceR_Jumptrans_AimU) && sign16(samus_pose - kPose_5B)) {
+      || (!sign16(samus_pose - kPose_55_FaceR_Jumptrans_AimU) && sign16(samus_pose - kPose_5B))) {
     samus_x_accel_mode = 0;
     Samus_Move_NoBaseSpeed_X();
     Samus_MoveExtraY();
@@ -1596,7 +1596,7 @@ LABEL_11:;
 
 static bool IsGreaterThanQuirked(uint16 vhi, uint16 vlo, uint16 cmphi, uint16 cmplo) {
   if ((int16)(vhi - cmphi) >= 0) {
-    if (vhi != cmphi || ((int16)(vlo - cmplo) >= 0) && vlo != cmplo)
+    if (vhi != cmphi || (((int16)(vlo - cmplo) >= 0) && vlo != cmplo))
       return true;
   }
   return false;
