@@ -1,4 +1,7 @@
 // This file is heavily influenced by Snes9x
+#ifndef _POSIX_C_SOURCE
+#define _POSIX_C_SOURCE 200809L
+#endif
 #include "third_party/gl_core/gl_core_3_1.h"
 #include "glsl_shader.h"
 #include "util.h"
@@ -394,7 +397,7 @@ GlslShader *GlslShader_CreateFromFile(const char *filename) {
   GlslShader_GetUniforms(gs);
 
   for (int i = 0; i < gs->max_prev_frame; i++)
-    glGenTextures(1, &gs->prev_frame[-i - 1 & 7].gl_texture);
+    glGenTextures(1, &gs->prev_frame[(-i - 1) & 7].gl_texture);
 
   static const GLfloat kTexCoords[16] = {
     0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 1.0f, 1.0f, 1.0f,
@@ -605,7 +608,7 @@ void GlslShader_Render(GlslShader *gs, GlTextureWithSize *tex, int viewport_x, i
     // ^-- store pos
     //    ^-- load pos
     GlTextureWithSize *store_pos = &gs->prev_frame[gs->frame_count & 7];
-    GlTextureWithSize *load_pos = &gs->prev_frame[gs->frame_count - gs->max_prev_frame & 7];
+    GlTextureWithSize *load_pos = &gs->prev_frame[(gs->frame_count - gs->max_prev_frame) & 7];
     assert(store_pos->gl_texture == 0);
     *store_pos = *tex;
     *tex = *load_pos;

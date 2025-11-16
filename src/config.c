@@ -20,7 +20,7 @@ enum {
 Config g_config;
 uint8 enhanced_features0;
 
-#define REMAP_SDL_KEYCODE(key) ((key) & SDLK_SCANCODE_MASK ? kKeyMod_ScanCode : 0) | (key) & (kKeyMod_ScanCode - 1)
+#define REMAP_SDL_KEYCODE(key) (((key) & SDLK_SCANCODE_MASK ? kKeyMod_ScanCode : 0) | ((key) & (kKeyMod_ScanCode - 1)))
 #define _(x) REMAP_SDL_KEYCODE(x)
 #define S(x) REMAP_SDL_KEYCODE(x) | kKeyMod_Shift
 #define A(x) REMAP_SDL_KEYCODE(x) | kKeyMod_Alt
@@ -318,7 +318,7 @@ static bool ParseBoolBit(const char *value, uint32 *data, uint32 mask) {
   bool tmp;
   if (!ParseBool(value, &tmp))
     return false;
-  *data = *data & ~mask | (tmp ? mask : 0);
+  *data = (*data & ~mask) | (tmp ? mask : 0);
   return true;
 }
 
