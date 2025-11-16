@@ -103,7 +103,7 @@ static Func_CalcHdma *const off_ADE024[4] = {  // 0xADDF6E
 
 void MotherBrain_CalcHdma_BeamAimedUp(void) {
   Enemy_MotherBrain *E = Get_MotherBrain(0);
-  off_ADE024[(E->mbn_var_3A >> 6) & 2 | (E->mbn_var_3B >> 7) & 1](E->mbn_var_3C, E->mbn_var_3E);
+  off_ADE024[((E->mbn_var_3A >> 6) & 2) | ((E->mbn_var_3B >> 7) & 1)](E->mbn_var_3C, E->mbn_var_3E);
   *(uint16 *)mother_brain_indirect_hdma = 16;
   *(uint16 *)&mother_brain_indirect_hdma[1] = -25344;
   *(uint16 *)&mother_brain_indirect_hdma[3] = 16;
@@ -215,7 +215,7 @@ void MotherBrain_CalcHdma_Up_UpLeft(uint16 r22, uint16 r24) {  // 0xADE124
 static Func_CalcHdma *const g_off_ADE20E[4] = { MotherBrain_CalcHdma_Down_DownRight, 0, MotherBrain_CalcHdma_Down_Down, MotherBrain_CalcHdma_Down_DownLeft };
 void MotherBrain_CalcHdma_Down(void) {  // 0xADE1A6
   Enemy_MotherBrain *E = Get_MotherBrain(0);
-  g_off_ADE20E[(E->mbn_var_3A >> 6) & 2 | (E->mbn_var_3B >> 7) & 1](E->mbn_var_3C, E->mbn_var_3E);
+  g_off_ADE20E[((E->mbn_var_3A >> 6) & 2) | ((E->mbn_var_3B >> 7) & 1)](E->mbn_var_3C, E->mbn_var_3E);
   *(uint16 *)mother_brain_indirect_hdma = 16;
   *(uint16 *)&mother_brain_indirect_hdma[1] = -25600;
   *(uint16 *)&mother_brain_indirect_hdma[3] = 16;
