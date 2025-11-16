@@ -441,7 +441,7 @@ uint16 SpacePirates_Func_8(void) {  // 0xB2F72E
       || (int16)(abs16(projectile_y_pos[v1] - E->base.y_pos) - 32) >= 0) {
     return 0;
   }
-  E->base.current_instruction = (E->base.x_pos - samus_x_pos & 0x8000) ? addr_kSpacePirates_Ilist_F462 : addr_kSpacePirates_Ilist_F270;
+  E->base.current_instruction = ((E->base.x_pos - samus_x_pos) & 0x8000) ? addr_kSpacePirates_Ilist_F462 : addr_kSpacePirates_Ilist_F270;
   E->base.instruction_timer = 1;
   return 1;
 }

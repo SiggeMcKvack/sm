@@ -848,13 +848,13 @@ const uint16 *Torizo_Instr_49(uint16 k, const uint16 *jp) {  // 0xAAD3EA
   if ((Torizo_Func_12(k) & 0x8000) == 0
       || !(CompareDistToSamus_X(k, 4) & 1)
       || CompareDistToSamus_X(k, 0x28) & 1
-      || samus_pose != kPose_1D_FaceR_Morphball_Ground
+      || (samus_pose != kPose_1D_FaceR_Morphball_Ground
       && samus_pose != kPose_1E_MoveR_Morphball_Ground
       && samus_pose != kPose_1F_MoveL_Morphball_Ground
       && samus_pose != kPose_79_FaceR_Springball_Ground
       && samus_pose != kPose_7A_FaceL_Springball_Ground
       && samus_pose != kPose_7B_MoveR_Springball_Ground
-      && samus_pose != kPose_7C_MoveL_Springball_Ground) {
+      && samus_pose != kPose_7C_MoveL_Springball_Ground)) {
     return jp + 1;
   }
   Get_Torizo(k)->toriz_var_09 = 0;

@@ -35,7 +35,7 @@ void MotherBrain_CalcHdma(void) {  // 0xADDE00
   E->mbn_var_3D = v3;
   E->mbn_var_3F = v3;
   r18 = 4 * (E->mbn_var_3A & 0xC0);
-  int i = (r18 | E->mbn_var_3B & 0xC0) >> 6;
+  int i = (r18 | (E->mbn_var_3B & 0xC0)) >> 6;
   funcs_BE56D[i]();
 }
 
