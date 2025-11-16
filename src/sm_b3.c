@@ -114,7 +114,7 @@ void BrinstarPipeBug_PreInstr_2(uint16 k) {  // 0xB38890
     Enemy_PipeBug *PipeBug = Get_PipeBug(k);
 
     uint16 a = GetSamusEnemyDelta_X(k);
-    PipeBug->pbg_var_A = PipeBug->pbg_var_A & 0x7fff | sign16(a);
+    PipeBug->pbg_var_A = (PipeBug->pbg_var_A & 0x7fff) | sign16(a);
 
     if (abs16(PipeBug->base.x_pos - samus_x_pos) < 0x40) {
       PipeBug->pbg_var_F = FUNC16(BrinstarPipeBug_PreInstr_3);
