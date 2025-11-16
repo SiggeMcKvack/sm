@@ -1930,9 +1930,9 @@ void Rinka_Init(void) {  // 0xA2B602
   Enemy_Rinka *E = Get_Rinka(cur_enemy_index);
   if (E->rinka_parameter_1) {
     Rinka_1(cur_enemy_index);
-    E->base.properties = E->base.properties & ~(kEnemyProps_RespawnIfKilled | kEnemyProps_DisableSamusColl | kEnemyProps_ProcessedOffscreen | kEnemyProps_Tangible) | 0x2C00;
+    E->base.properties = (E->base.properties & ~(kEnemyProps_RespawnIfKilled | kEnemyProps_DisableSamusColl | kEnemyProps_ProcessedOffscreen | kEnemyProps_Tangible)) | 0x2C00;
   } else {
-    E->base.properties = E->base.properties & ~(kEnemyProps_RespawnIfKilled | kEnemyProps_DisableSamusColl | kEnemyProps_ProcessedOffscreen | kEnemyProps_Tangible) | 0x6400;
+    E->base.properties = (E->base.properties & ~(kEnemyProps_RespawnIfKilled | kEnemyProps_DisableSamusColl | kEnemyProps_ProcessedOffscreen | kEnemyProps_Tangible)) | 0x6400;
   }
   E->base.palette_index = 1024;
   Rinka_Init3(cur_enemy_index);
@@ -2910,7 +2910,7 @@ void MaridiaLargeSnail_Func_5(void) {  // 0xA2CE2B
         E->mlsl_var_D = 1;
       }
       E->mlsl_var_C = 128;
-      E->mlsl_var_00 = E->mlsl_var_00 & 1 | 4;
+      E->mlsl_var_00 = (E->mlsl_var_00 & 1) | 4;
       MaridiaLargeSnail_Func_10(cur_enemy_index);
       E->mlsl_var_A = FUNC16(MaridiaLargeSnail_Func_6);
     } else {

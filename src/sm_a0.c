@@ -577,10 +577,10 @@ void DetermineWhichEnemiesToProcess(void) {  // 0xA08EB6
           v1->enemy_ptr = 0;
         } else if ((properties & 0x800) != 0
                    || (v1->ai_handler_bits & 4) != 0
-                   || (int16)(v1->x_width + v1->x_pos - layer1_x_pos) >= 0
+                   || ((int16)(v1->x_width + v1->x_pos - layer1_x_pos) >= 0
                    && (int16)(v1->x_width + layer1_x_pos + 256 - v1->x_pos) >= 0
                    && (int16)(v1->y_pos + 8 - layer1_y_pos) >= 0
-                   && (int16)(layer1_y_pos + 248 - v1->y_pos) >= 0) {
+                   && (int16)(layer1_y_pos + 248 - v1->y_pos) >= 0)) {
           uint16 v3 = active_enemy_indexes_write_ptr;
           active_enemy_indexes[active_enemy_indexes_write_ptr >> 1] = cur_enemy_index;
           active_enemy_indexes_write_ptr = v3 + 2;
@@ -3524,7 +3524,7 @@ static uint8 EnemyBlockCollVertReact_Slope_NonSquare(EnemyBlockCollInfo *ebci) {
     v11 = E->x_pos >> 4;
     if (v11 != mod)
       return 0;
-    uint16 temp_collision_DD4 = (ebci->ebci_r24 - E->y_height) & 0xF ^ 0xF;
+    uint16 temp_collision_DD4 = ((ebci->ebci_r24 - E->y_height) & 0xF) ^ 0xF;
     uint16 temp_collision_DD6 = 16 * (BTS[v1] & 0x1F);
     v12 = BTS[v1] << 8;
     if (v12 < 0
@@ -3744,7 +3744,7 @@ uint8 EnemyFunc_C8AD(uint16 k) {  // 0xA0C8AD
   CalculateBlockContainingPixelPos(E->x_pos, E->y_pos - E->y_height);
   if ((level_data[cur_block_index] & 0xF000) == 4096 && (BTS[cur_block_index] & 0x1F) >= 5) {
     result = 1;
-    uint16 temp_collision_DD4 = (E->y_pos - E->y_height) & 0xF ^ 0xF;
+    uint16 temp_collision_DD4 = ((E->y_pos - E->y_height) & 0xF) ^ 0xF;
     uint16 temp_collision_DD6 = 16 * (BTS[cur_block_index] & 0x1F);
     if (BTS[cur_block_index] & 0x80) {
       uint16 j = (BTS[cur_block_index] & 0x40) != 0 ? E->x_pos ^ 0xF : E->x_pos;

@@ -227,7 +227,7 @@ void sub_9382FD(void) {  // 0x9382FD
 
 void DrawBombAndProjectileExplosions(void) {  // 0x93834D
   uint16 v0 = 18, v2;
-  uint16 r18, r20;
+  uint16 r18 = 0, r20 = 0;
   projectile_index = 18;
   do {
     int v1 = v0 >> 1;

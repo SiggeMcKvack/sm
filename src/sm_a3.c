@@ -2074,7 +2074,7 @@ LABEL_10:
   }
   if (!samus_has_momentum_flag) {
     uint16 msl_var_08 = E->msl_var_08;
-    if (msl_var_08 == 2 || msl_var_08 != 3 && msl_var_08 != 5)
+    if (msl_var_08 == 2 || (msl_var_08 != 3 && msl_var_08 != 5))
       goto LABEL_10;
   }
 LABEL_11:
@@ -2278,7 +2278,7 @@ void MaridiaSnail_Func_15(uint16 k) {  // 0xA3D1B3
         MaridiaSnail_Func_18(k);
         MaridiaSnail_Func_16(k);
       }
-      E->base.properties = E->msl_var_C | E->base.properties & ~3;
+      E->base.properties = E->msl_var_C | (E->base.properties & ~3);
       StoneZoomer_E67A(k);
       E->msl_var_F = FUNC16(nullsub_215);
       E->base.current_instruction = E->msl_var_D;
@@ -2333,7 +2333,7 @@ uint8 MaridiaSnail_Func_19(uint16 k) {  // 0xA3D356
   uint16 v2 = g_word_A3CDC2[E->msl_var_07];
   E->msl_var_07 = v2;
   E->base.current_instruction = *(VoidP *)((uint8 *)&g_stru_A3CD42[0].field_0 + (8 * v2));
-  E->base.properties = *(uint16 *)((uint8 *)&g_stru_A3CD42[0].field_2 + (8 * v2)) | E->base.properties & ~3;
+  E->base.properties = *(uint16 *)((uint8 *)&g_stru_A3CD42[0].field_2 + (8 * v2)) | (E->base.properties & ~3);
   E->msl_var_D = *(VoidP *)((uint8 *)&g_stru_A3CD42[0].field_4 + (8 * v2));
   E->msl_var_C = *(uint16 *)((uint8 *)&g_stru_A3CD42[0].field_6 + (8 * v2));
   MaridiaSnail_Func_2(k, 8 * v2);
