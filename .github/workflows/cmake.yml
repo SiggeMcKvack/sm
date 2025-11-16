@@ -1,0 +1,85 @@
+name: CMake Build
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: ${{ matrix.os }} - ${{ matrix.build_type }}
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        build_type: [Release, Debug]
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    # Install SDL2 dependencies per platform
+    - name: Install SDL2 (Ubuntu)
+      if: runner.os == 'Linux'
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y libsdl2-dev
+
+    - name: Install SDL2 (macOS)
+      if: runner.os == 'macOS'
+      run: brew install sdl2
+
+    - name: Install SDL2 (Windows)
+      if: runner.os == 'Windows'
+      run: |
+        vcpkg install sdl2:x64-windows
+        echo "CMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake" >> $GITHUB_ENV
+      shell: bash
+
+    # Configure CMake
+    - name: Configure CMake
+      run: |
+        cmake -B build -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
+      shell: bash
+
+    # Build
+    - name: Build
+      run: cmake --build build --config ${{ matrix.build_type }} -j 4
+      shell: bash
+
+    # Determine executable name and location
+    - name: Set executable path (Unix)
+      if: runner.os != 'Windows'
+      run: echo "EXECUTABLE_PATH=sm" >> $GITHUB_ENV
+      shell: bash
+
+    - name: Set executable path (Windows)
+      if: runner.os == 'Windows'
+      run: echo "EXECUTABLE_PATH=sm.exe" >> $GITHUB_ENV
+      shell: bash
+
+    # Upload build artifacts
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: sm-${{ matrix.os }}-${{ matrix.build_type }}
+        path: ${{ env.EXECUTABLE_PATH }}
+        if-no-files-found: error
+
+    # Display build info
+    - name: Display build info (Unix)
+      if: runner.os != 'Windows'
+      run: |
+        ls -lh sm
+        file sm
+      shell: bash
+
+    - name: Display build info (Windows)
+      if: runner.os == 'Windows'
+      run: |
+        dir sm.exe
+      shell: bash

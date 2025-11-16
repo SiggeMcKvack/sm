@@ -2,12 +2,67 @@
   * A Super Metroid rom (Make sure to rename it to `sm.smc`)
   * libsdl2-dev
   * Super Metroid repo `git clone --recursive https://github.com/snesrev/sm`
-  
+
  For Linux/MacOS you must install these for your desired OS:
  * Ubuntu/Debian: `sudo apt install libsdl2-dev`
  * Fedora Linux: `sudo dnf in sdl2-devel`
  * Arch Linux: `sudo pacman -S sdl2`
  * macOS: `brew install sdl2`
+
+# Building with CMake (Recommended)
+
+CMake provides a unified build system for all platforms. This is the recommended approach if you're comfortable with CMake.
+
+## Requirements
+  * CMake 3.15 or newer
+  * SDL2 development libraries (see above)
+  * C compiler (GCC, Clang, or MSVC)
+
+## Linux/macOS
+
+```sh
+cmake -B build -DCMAKE_BUILD_TYPE=Release
+cmake --build build -j$(nproc)  # Linux
+cmake --build build -j$(sysctl -n hw.ncpu)  # macOS
+```
+
+The executable will be created at `./sm` in the project root.
+
+For Debug builds:
+```sh
+cmake -B build-debug -DCMAKE_BUILD_TYPE=Debug
+cmake --build build-debug
+```
+
+## Windows (Visual Studio)
+
+CMake can generate Visual Studio projects:
+
+```cmd
+cmake -B build -G "Visual Studio 17 2022"
+cmake --build build --config Release
+```
+
+Or open the generated `build/sm.sln` in Visual Studio.
+
+## Windows (MSYS2/MinGW)
+
+In MINGW64 terminal:
+```sh
+cmake -B build -DCMAKE_BUILD_TYPE=Release
+cmake --build build -j16
+```
+
+## Cleaning
+
+To clean and rebuild:
+```sh
+rm -rf build       # or: rmdir /s build on Windows
+cmake -B build -DCMAKE_BUILD_TYPE=Release
+cmake --build build
+```
+
+---
 
 # Windows
 
