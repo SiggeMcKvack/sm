@@ -191,8 +191,9 @@ if(MSVC)
         PROPERTIES COMPILE_FLAGS "/Od"
     )
 
-    # MinSpace optimization for cart/input/spc in Debug builds
-    if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+    # MinSpace optimization for cart/input/spc (Release only)
+    # Note: /O1 is incompatible with /RTC1 in Debug builds, so only apply in Release
+    if(CMAKE_BUILD_TYPE STREQUAL "Release")
         set_source_files_properties(
             src/snes/cart.c
             src/snes/input.c

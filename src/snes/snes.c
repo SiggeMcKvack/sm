@@ -395,7 +395,7 @@ uint8_t snes_read(Snes* snes, uint32_t adr) {
     if (adr == 0x4016 || adr == 0x4017) {
       assert(0);
     }
-    if(adr >= 0x4200 && adr < 0x4220 || adr >= 0x4218 && adr < 0x4220) {
+    if((adr >= 0x4200 && adr < 0x4220) || (adr >= 0x4218 && adr < 0x4220)) {
       return snes_readReg(snes, adr); // internal registers
     }
     if(adr >= 0x4300 && adr < 0x4380) {

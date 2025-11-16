@@ -738,7 +738,7 @@ void DumpCpuHistory() {
 }
 
 static void cpu_doOpcode(Cpu* cpu, uint8_t opcode) {
-  uint32 cur_pc = ((cpu->k << 16) | cpu->pc - 1);
+  uint32 cur_pc = ((cpu->k << 16) | (cpu->pc - 1));
   pc_hist[pc_hist_ctr] = cur_pc;
   pc_hist_ctr = (pc_hist_ctr + 1) & 7;
   
