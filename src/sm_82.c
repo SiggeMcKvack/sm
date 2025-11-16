@@ -4543,7 +4543,7 @@ void OptionsMenu_AddToVramQueue(void) {  // 0x82ECFF
 
 void OptionsMenuFunc5(uint16 a, uint16 k, uint16 j) {  // 0x82ED28
   do {
-    *(uint16 *)((uint8 *)ram3000.pause_menu_map_tilemap + k) = a | *(uint16 *)((uint8 *)ram3000.pause_menu_map_tilemap + k) & 0xE3FF;
+    *(uint16 *)((uint8 *)ram3000.pause_menu_map_tilemap + k) = a | (*(uint16 *)((uint8 *)ram3000.pause_menu_map_tilemap + k) & 0xE3FF);
     k += 2;
     j -= 2;
   } while (j);
@@ -4574,7 +4574,7 @@ void GameOptionsMenu_3_OptionsScreen(void) {
 }
 
 void GameOptionsMenuItemFunc_0(void) {  // 0x82EDB1
-  if (enable_debug && (joypad1_lastkeys & kButton_L) == 0 || loading_game_state == kGameState_5_FileSelectMap) {
+  if ((enable_debug && (joypad1_lastkeys & kButton_L) == 0) || loading_game_state == kGameState_5_FileSelectMap) {
     game_options_screen_index = 4;
   } else {
     screen_fade_delay = 0;
@@ -4937,7 +4937,7 @@ void sub_82F369(uint16 j) {  // 0x82F369
 
 
 void OptionsPreInstr_F376(uint16 k) {  // 0x82F376
-  if (game_state != kGameState_2_GameOptionsMenu || game_options_screen_index == 6 && reg_INIDISP == 0x80) {
+  if (game_state != kGameState_2_GameOptionsMenu || (game_options_screen_index == 6 && reg_INIDISP == 0x80)) {
     int v1 = k >> 1;
     eproj_E[v1 + 15] = 1;
     eproj_y_vel[v1 + 17] = addr_off_82F4B6;

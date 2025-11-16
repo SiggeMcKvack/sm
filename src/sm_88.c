@@ -193,7 +193,7 @@ void HandleLayerBlendingXrayCanShowBlocks(void) {  // 0x88817B
   reg_TMW = 3;
   reg_TSW = 4;
   next_gameplay_CGWSEL = 34;
-  next_gameplay_CGADSUB = next_gameplay_CGADSUB & 0x80 | 0x73;
+  next_gameplay_CGADSUB = (next_gameplay_CGADSUB & 0x80) | 0x73;
 }
 
 void HandleLayerBlendingXrayCantShowBlocks(void) {  // 0x8881A4
@@ -205,7 +205,7 @@ void HandleLayerBlendingXrayCantShowBlocks(void) {  // 0x8881A4
   reg_TMW = 3;
   reg_TSW = 4;
   next_gameplay_CGWSEL = 34;
-  next_gameplay_CGADSUB = next_gameplay_CGADSUB & 0x80 | 0x61;
+  next_gameplay_CGADSUB = (next_gameplay_CGADSUB & 0x80) | 0x61;
   if (room_ptr == addr_kRoom_cefb)
     reg_TM = 17;
 }
@@ -702,8 +702,8 @@ void MoveXrayUp(void) {  // 0x8887E0
     }
   } else if (demo_input + xray_angle != 256) {
     if ((int16)(demo_input + xray_angle - 256) >= 0
-        || (v1 = (__PAIR32__(demo_input, xray_angle) + __PAIR32__(xray_angle, 1)) >> 16, ++xray_angle, v1 != 256)
-        && (int16)(v1 - 256) >= 0) {
+        || ((v1 = (__PAIR32__(demo_input, xray_angle) + __PAIR32__(xray_angle, 1)) >> 16, ++xray_angle, v1 != 256)
+        && (int16)(v1 - 256) >= 0)) {
       xray_angle = 256 - demo_input;
     }
   }
@@ -716,15 +716,15 @@ void MoveXrayDown(void) {  // 0x888835
   if (sign16(xray_angle - 128)) {
     if (demo_input + xray_angle != 128) {
       if ((int16)(demo_input + xray_angle - 128) >= 0
-          || (v0 = (__PAIR32__(demo_input, xray_angle) + __PAIR32__(xray_angle, 1)) >> 16, ++xray_angle, v0 != 128)
-          && (int16)(v0 - 128) >= 0) {
+          || ((v0 = (__PAIR32__(demo_input, xray_angle) + __PAIR32__(xray_angle, 1)) >> 16, ++xray_angle, v0 != 128)
+          && (int16)(v0 - 128) >= 0)) {
         xray_angle = 128 - demo_input;
       }
     }
   } else if (xray_angle - demo_input != 128) {
     if ((int16)(xray_angle - demo_input - 128) < 0
-        || (v1 = xray_angle != 0, --xray_angle, xray_angle - (!v1 + demo_input) != 128)
-        && (int16)(xray_angle - (!v1 + demo_input) - 128) < 0) {
+        || ((v1 = xray_angle != 0, --xray_angle, xray_angle - (!v1 + demo_input) != 128)
+        && (int16)(xray_angle - (!v1 + demo_input) - 128) < 0)) {
       xray_angle = demo_input + 128;
     }
   }
@@ -1775,7 +1775,7 @@ void HdmaobjPreInstr_FirefleaBG3XScroll(uint16 k) {  // 0x88B0BC
   int8 v2;
   uint16 v1;
 
-  fx_layer_blending_config_c = fx_layer_blending_config_c & 0xFF00 | 0xC;
+  fx_layer_blending_config_c = (fx_layer_blending_config_c & 0xFF00) | 0xC;
   if (!time_is_frozen_flag) {
     if (!--fireflea_flashing_timer) {
       fireflea_flashing_timer = 6;
@@ -1975,7 +1975,7 @@ void HdmaobjPreInstr_LavaAcidBG3YScroll(uint16 k) {  // 0x88B3B0
     if (v2 >= 0) {
       v3 = v2 - layer1_y_pos;
       if (v3 <= 0) {
-        v4 = (v3 ^ 0x1F) & 0x1F | 0x100;
+        v4 = ((v3 ^ 0x1F) & 0x1F) | 0x100;
 LABEL_8:
         *(uint16 *)&mother_brain_indirect_hdma[2] = v4;
         if (fx_type == 2 && (lava_acid_y_pos & 0x8000) == 0) {
@@ -2135,7 +2135,7 @@ void HdmaobjPreInstr_WaterBG3XScroll(uint16 k) {  // 0x88C48E
   if ((int16)fx_y_pos < 0) {
     bg3_ypos = 0;
   } else if (v3 <= 0) {
-    bg3_ypos = (v3 ^ 0x1F) & 0x1F | 0x100;
+    bg3_ypos = ((v3 ^ 0x1F) & 0x1F) | 0x100;
   } else if ((uint16)v3 < 0x100) {
     bg3_ypos = (uint8)~v3;
   } else {
@@ -2161,7 +2161,7 @@ void HdmaobjPreInstr_WaterBG3XScroll(uint16 k) {  // 0x88C48E
     if ((uint16)v9 >= 0x200)
       v9 = 511;
   } else {
-    v9 = v9 & 0xF | 0x100;
+    v9 = (v9 & 0xF) | 0x100;
   }
   hdma_object_table_pointers[k >> 1] = 3 * (((v9 ^ 0x1FF) + 1) & 0x3FF) + 0xC645;
 }
@@ -2188,7 +2188,7 @@ void HdmaobjPreInstr_WaterBG2XScroll(uint16 k) {  // 0x88C589
     if ((uint16)v1 >= 0x200)
       v1 = 511;
   } else {
-    v1 = (fx_y_pos - layer1_y_pos) & 0xF | 0x100;
+    v1 = ((fx_y_pos - layer1_y_pos) & 0xF) | 0x100;
   }
   hdma_object_table_pointers[(uint8)k >> 1] = 3 * ((v1 ^ 0x1FF) & 0x3FF) + 0xCF46;
 }
@@ -2998,8 +2998,8 @@ void sub_88E7ED(void) {  // 0x88E7ED
     hdma_object_A[0] = 0;
     v0 = g_word_88E833[0];
   }
-  reg_COLDATA[0] = v0 & 0x1F | 0x20;
-  reg_COLDATA[1] = (v0 >> 5) & 0x1F | 0x40;
+  reg_COLDATA[0] = (v0 & 0x1F) | 0x20;
+  reg_COLDATA[1] = ((v0 >> 5) & 0x1F) | 0x40;
   reg_COLDATA[2] = ((uint16)(v0 >> 2) >> 8) & 0x1F | 0x80;
 }
 

@@ -636,7 +636,7 @@ static uint8 EprojColl_874E(EprojCollInfo *eci) {  // 0x86874E
     int v10 = v0 >> 1;
     v11 = eproj_x_pos[v10] >> 4;
     if (v11 == mod) {
-      uint16 temp_collision_DD4 = (eci->eci_r24 - eci->eci_r30) & 0xF ^ 0xF;
+      uint16 temp_collision_DD4 = ((eci->eci_r24 - eci->eci_r30) & 0xF) ^ 0xF;
       uint16 temp_collision_DD6 = 16 * (BTS[v9] & 0x1F);
       v12 = BTS[v9] << 8;
       if (v12 < 0
@@ -949,7 +949,7 @@ const uint8 *EprojInstr_868D99(uint16 k, const uint8 *epjp) {  // 0x868D99
     eproj_F[v3] = v2;
     eproj_E[v3] = 256;
     eproj_pre_instr[v3] = FUNC16(EprojPreInstr_8DCA);
-    eproj_properties[v3] = eproj_properties[v3] & 0x5FFF | 0x2000;
+    eproj_properties[v3] = (eproj_properties[v3] & 0x5FFF) | 0x2000;
     samus_invincibility_timer = 0;
     samus_knockback_timer = 0;
   }
@@ -1401,7 +1401,7 @@ static void EprojInit_PhantoonDestroyableFireballs(uint16 j) {  // 0x869824
     eproj_x_pos[v2] = enemy_data[0].x_pos;
     eproj_y_pos[v2] = enemy_data[0].y_pos + 32;
     eproj_instr_list_ptr[v2] = addr_off_8697B4;
-    eproj_properties[v2] = eproj_properties[v2] & 0xFFF | 0x2000;
+    eproj_properties[v2] = (eproj_properties[v2] & 0xFFF) | 0x2000;
     break;
   }
   case 2: {
@@ -1465,7 +1465,7 @@ void EprojPreInstr_PhantoonStartingFireballs(uint16 k) {  // 0x869981
   int v1 = k >> 1;
   eproj_y_vel[v1] += 16;
   if (EprojBlockCollisition_Vertical(k) & 1) {
-    eproj_properties[v1] = eproj_properties[v1] & 0xFFF | 0x8000;
+    eproj_properties[v1] = (eproj_properties[v1] & 0xFFF) | 0x8000;
     eproj_pre_instr[v1] = FUNC16(EprojPreInstr_PhantoonStartingFireballs2);
     eproj_instr_list_ptr[v1] = addr_word_86976C;
     eproj_instr_timers[v1] = 1;
@@ -2433,8 +2433,8 @@ void EprojPreInstr_B237(uint16 k) {  // 0x86B237
   uint8 carry;
 
   if (EprojBlockCollisition_Horiz(k)
-      || (carry = EprojBlockCollisition_Vertical(k), v1 = k >> 1, (eproj_y_vel[v1] & 0x8000) == 0)
-      && carry) {
+      || ((carry = EprojBlockCollisition_Vertical(k), v1 = k >> 1, (eproj_y_vel[v1] & 0x8000) == 0)
+      && carry)) {
     int v3 = k >> 1;
     eproj_instr_list_ptr[v3] = addr_off_86B2EF;
     eproj_instr_timers[v3] = 1;
@@ -3925,7 +3925,7 @@ void EprojPreInstr_N00bTubeShards(uint16 k) {  // 0x86D7FD
 }
 
 void sub_86D83D(uint16 k) {  // 0x86D83D
-  int v2 = (eproj_x_vel[k >> 1] & 0x17E | 0x80) >> 1;
+  int v2 = ((eproj_x_vel[k >> 1] & 0x17E) | 0x80) >> 1;
   int v6 = eproj_index >> 1;
   int32 amt = INT16_SHL8((int16)kSinCosTable8bit_Sext[v2 + 64] >> 2);
   AddToHiLo(&eproj_F[v6], &eproj_E[v6], amt);
@@ -3936,7 +3936,7 @@ void sub_86D83D(uint16 k) {  // 0x86D83D
 }
 
 void sub_86D89F(uint16 k) {  // 0x86D89F
-  uint16 v1 = eproj_x_vel[k >> 1] & 0x17E | 0x80;
+  uint16 v1 = (eproj_x_vel[k >> 1] & 0x17E) | 0x80;
   int v2 = v1 >> 1;
   int32 amt = INT16_SHL8((int16)kSinCosTable8bit_Sext[v2 + 64] >> 2);
   int v5 = eproj_index >> 1;
