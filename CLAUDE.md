@@ -52,24 +52,26 @@ This is a decompilation/reverse engineering project of Super Metroid (SNES). The
 
 ## Build Commands
 
+All builds now use CMake. See `BUILDING.md` for detailed instructions.
+
 ### Standard Build (Linux/macOS)
 ```bash
-make                # Basic build
-make -j$(nproc)     # Parallel build using all cores
-make clean all      # Clean and rebuild
-CC=clang make       # Use specific compiler
+cmake -B build -DCMAKE_BUILD_TYPE=Release
+cmake --build build -j$(nproc)     # Linux
+cmake --build build -j$(sysctl -n hw.ncpu)  # macOS
+```
+
+### Windows (Visual Studio)
+```bash
+cmake -B build -G "Visual Studio 17 2022"
+cmake --build build --config Release
 ```
 
 ### Windows (MSYS2/MinGW64)
 ```bash
-make                # Basic build
-make -j16           # Parallel build (adjust thread count)
+cmake -B build -DCMAKE_BUILD_TYPE=Release
+cmake --build build -j16
 ```
-
-### Windows (Visual Studio)
-- Open `sm.sln` in Visual Studio 2022
-- Change build target from `Debug` to `Release`
-- Build solution
 
 ### Nintendo Switch
 Navigate to `src/platform/switch/` and run:
